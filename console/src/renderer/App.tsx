@@ -33,7 +33,7 @@ export const App: React.FC = () => {
         clearInterval(intervalId);
       }
     };
-  }, [autoDemo]);
+  }, [autoDemo, intervalId]);
 
   const initializeSimulation = async () => {
     try {

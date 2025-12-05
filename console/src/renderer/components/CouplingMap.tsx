@@ -51,7 +51,7 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
 
     // Create force simulation
     const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(100))
+      .force('link', d3.forceLink<D3Node, D3Link>(links).id((d) => d.id).distance(100))
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius(30));
@@ -89,6 +89,32 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
       .attr('stroke-opacity', 0.6)
       .attr('marker-end', d => `url(#arrow-${d.policy})`);
 
+    // Drag functions
+    function dragstarted(event: d3.D3DragEvent<SVGCircleElement, D3Node, D3Node>) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      event.subject.fx = event.subject.x;
+      event.subject.fy = event.subject.y;
+    }
+
+    function dragged(event: d3.D3DragEvent<SVGCircleElement, D3Node, D3Node>) {
+      event.subject.fx = event.x;
+      event.subject.fy = event.y;
+    }
+
+    function dragended(event: d3.D3DragEvent<SVGCircleElement, D3Node, D3Node>) {
+      if (!event.active) simulation.alphaTarget(0);
+      event.subject.fx = null;
+      event.subject.fy = null;
+    }
+
+    // Create drag behavior
+    function drag() {
+      return d3.drag<SVGCircleElement, D3Node>()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended);
+    }
+
     // Add nodes
     const node = svg.append('g')
       .selectAll('circle')
@@ -98,10 +124,7 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
       .attr('fill', '#4dabf7')
       .attr('stroke', '#fff')
       .attr('stroke-width', 2)
-      .call(d3.drag<SVGCircleElement, D3Node>()
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended) as any);
+      .call(drag() as any);
 
     // Add labels
     const labels = svg.append('g')
@@ -130,24 +153,6 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
         .attr('x', d => d.x!)
         .attr('y', d => d.y!);
     });
-
-    // Drag functions
-    function dragstarted(event: d3.D3DragEvent<SVGCircleElement, D3Node, D3Node>) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
-    }
-
-    function dragged(event: d3.D3DragEvent<SVGCircleElement, D3Node, D3Node>) {
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
-    }
-
-    function dragended(event: d3.D3DragEvent<SVGCircleElement, D3Node, D3Node>) {
-      if (!event.active) simulation.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
-    }
 
     return () => {
       simulation.stop();
