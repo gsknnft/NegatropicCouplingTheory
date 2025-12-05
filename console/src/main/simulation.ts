@@ -11,6 +11,17 @@ export interface Edge {
   target: number;
 }
 
+export interface ScenarioMetadata {
+  name?: string;
+  description?: string;
+  author?: string;
+  version?: string;
+  date?: string;
+  parameters?: Record<string, unknown>;
+  sourcePath?: string;
+  format?: string;
+}
+
 export interface SimulationMetrics {
   negentropy: number;
   coherence: number;
@@ -33,12 +44,14 @@ export interface SimulationState {
   meshMetrics: SimulationMetrics;
   edgeMetrics: Map<string, EdgeMetrics>;
   history: SimulationMetrics[];
+  scenarioMetadata?: ScenarioMetadata;
 }
 
 export interface SimulationScenario {
   nodes: number;
   edges: Edge[];
   distributions: Map<string, number[]>;
+  metadata?: ScenarioMetadata;
 }
 
 export interface SimulationOptions {
@@ -266,6 +279,7 @@ export class NCFSimulation {
       meshMetrics,
       edgeMetrics,
       history: this.history,
+      scenarioMetadata: this.scenario?.metadata,
     };
   }
 

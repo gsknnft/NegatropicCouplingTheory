@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { SignalFrame } from '@hackathon/shared';
+import type { SignalFrame } from 'shared';
 
 interface SignalScopeProps {
   data: SignalFrame;

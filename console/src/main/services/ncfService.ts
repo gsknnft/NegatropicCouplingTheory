@@ -68,29 +68,97 @@ export class NCFService {
   }
 
   private async loadScenario(filePath: string): Promise<SimulationScenario> {
-    const absolute = path.isAbsolute(filePath)
-      ? filePath
-      : path.resolve(process.cwd(), filePath);
-    const buffer = await fs.readFile(absolute, 'utf-8');
-    const parsed = JSON.parse(buffer) as ScenarioFile;
+    // Auto-detect file type
+    const ext = path.extname(filePath).toLowerCase();
+    let buffer: string | Buffer;
+    let parsed: any;
 
-    const edges: Edge[] = parsed.mesh.edges.map(([source, target]) => ({
-      source,
-      target,
-    }));
-    const rawDistributions =
-      parsed.initial_state?.probability_distributions ?? {};
-
-    const distributions = new Map<string, number[]>();
-    for (const [key, values] of Object.entries(rawDistributions)) {
-      distributions.set(this.normalizeEdgeKey(key), values);
+    if (filePath.startsWith('uploads/')) {
+      // Check in-memory uploads (from main/index.ts)
+      const { uploadedScenarios } = require('../main/index');
+      const upload = uploadedScenarios.get(path.basename(filePath));
+      if (!upload) throw new Error('Uploaded scenario not found');
+      buffer = upload.buffer;
+    } else {
+      buffer = await fs.readFile(
+        path.isAbsolute(filePath)
+          ? filePath
+          : path.resolve(process.cwd(), filePath),
+      );
     }
 
-    return {
-      nodes: parsed.mesh.nodes,
-      edges,
-      distributions,
-    };
+    if (ext === '.json') {
+      parsed = JSON.parse(buffer.toString());
+      // ...existing JSON parsing logic...
+      const edges: Edge[] = parsed.mesh.edges.map(
+        ([source, target]: [number, number]) => ({ source, target }),
+      );
+      const rawDistributions =
+        parsed.initial_state?.probability_distributions ?? {};
+      const distributions = new Map<string, number[]>();
+      for (const [key, values] of Object.entries(rawDistributions)) {
+        distributions.set(this.normalizeEdgeKey(key), values as number[]);
+      }
+      return {
+        nodes: parsed.mesh.nodes,
+        edges,
+        distributions,
+      };
+    } else if (ext === '.py') {
+      // Run Python script and parse output
+      const { execSync } = require('child_process');
+      const result = execSync(`python`, { input: buffer, encoding: 'utf8' });
+      parsed = JSON.parse(result);
+      // Assume output matches ScenarioFile shape
+      const edges: Edge[] = parsed.mesh.edges.map(
+        ([source, target]: [number, number]) => ({ source, target }),
+      );
+      const rawDistributions =
+        parsed.initial_state?.probability_distributions ?? {};
+      const distributions = new Map<string, number[]>();
+      for (const [key, values] of Object.entries(rawDistributions)) {
+        distributions.set(this.normalizeEdgeKey(key), values as number[]);
+      }
+      return {
+        nodes: parsed.mesh.nodes,
+        edges,
+        distributions,
+      };
+    } else if (ext === '.wl') {
+      // Run Wolfram script and parse output (stub)
+      // TODO: Integrate with Wolfram Engine or MathKernel
+      throw new Error('Wolfram scenario parsing not yet implemented');
+    } else if (ext === '.ipynb') {
+      // Parse notebook and extract scenario JSON
+      parsed = JSON.parse(buffer.toString());
+      // Find first code cell with scenario JSON
+      const cell = parsed.cells.find(
+        (c: any) =>
+          c.cell_type === 'code' &&
+          c.source.some((line: string) => line.includes('mesh')),
+      );
+      if (!cell) throw new Error('No scenario cell found in notebook');
+      const scenarioSource = cell.source.join('');
+      const scenarioJson = scenarioSource.match(/{[\s\S]*}/);
+      if (!scenarioJson) throw new Error('No scenario JSON found in cell');
+      const scenario = JSON.parse(scenarioJson[0]);
+      const edges: Edge[] = scenario.mesh.edges.map(
+        ([source, target]: [number, number]) => ({ source, target }),
+      );
+      const rawDistributions =
+        scenario.initial_state?.probability_distributions ?? {};
+      const distributions = new Map<string, number[]>();
+      for (const [key, values] of Object.entries(rawDistributions)) {
+        distributions.set(this.normalizeEdgeKey(key), values as number[]);
+      }
+      return {
+        nodes: scenario.mesh.nodes,
+        edges,
+        distributions,
+      };
+    } else {
+      throw new Error('Unsupported scenario file type');
+    }
   }
 
   private async getScenario(filePath?: string): Promise<SimulationScenario> {

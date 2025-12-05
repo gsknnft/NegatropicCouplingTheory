@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import path from 'node:path';
 import log from 'electron-log/main';
@@ -8,6 +9,24 @@ import {
   REACT_DEVELOPER_TOOLS,
 } from 'electron-devtools-installer';
 import { ncfService, NCFParams, NCFResponse } from './services/ncfService';
+
+// In-memory scenario store
+const uploadedScenarios = new Map<string, { buffer: Buffer; type: string; saveToFile: boolean }>();
+ipcMain.handle('ncf:uploadScenario', async (_event, { name, type, data, saveToFile }) => {
+  try {
+    const buffer = Buffer.from(data);
+    uploadedScenarios.set(name, { buffer, type, saveToFile });
+    if (saveToFile) {
+      const dest = path.resolve(process.cwd(), 'uploads', name);
+      await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+      await fs.promises.writeFile(dest, buffer);
+      return { success: true, path: dest };
+    }
+    return { success: true, name };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+});
 
 let mainWindow: BrowserWindow | null = null;
 

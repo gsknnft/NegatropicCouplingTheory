@@ -11,40 +11,41 @@
 import React, { useEffect, useRef } from 'react';
 import { getSeverityColor, getSeverityTextColor } from './utils';
 import { AnomalyDetection } from '../types';
+// import { EntropyField } from './EntropyField';
+// import { NegentropyGauge } from './NegentropyGauge';
+// import { CouplingMap } from './CouplingMap';
 
-
-
-interface LiqDataPoint {
+interface DataPoint {
   timestamp: number;
-  price: number;
-  volume: number;
+  throughput: number;
+  entropy: number;
 }
 
-interface TraditionalVsQuantumProps {
-  data: LiqDataPoint[];
+
+interface ClassicalVsNegentropicProps {
+  data: DataPoint[];
   signalData: {
     coherence: number[];
-    entropy: number[];
+    negentropy: number[];
     fieldState: string[];
   };
   anomalies: AnomalyDetection[];
 }
 
-export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
+export const ClassicalVsNegentropic: React.FC<ClassicalVsNegentropicProps> = ({
   data,
   signalData,
   anomalies
 }) => {
-  const traditionalCanvasRef = useRef<HTMLCanvasElement>(null);
-  const quantumCanvasRef = useRef<HTMLCanvasElement>(null);
-
+  const classicalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const negentropicCanvasRef = useRef<HTMLCanvasElement>(null);
+  
   useEffect(() => {
-    drawTraditionalChart();
-    drawQuantumChart();
+    drawClassicalChart();
+    drawNegentropicChart();
   }, [data, signalData]);
-
-  const drawTraditionalChart = () => {
-    const canvas = traditionalCanvasRef.current;
+  const drawClassicalChart = () => {
+    const canvas = classicalCanvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
@@ -56,40 +57,35 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
 
     if (data.length === 0) return;
 
-    // Draw typocal data flows (** note, this was for markets - we need to adapt for NCT **)
-    const prices = data.map(d => d.price);
-    const maxPrice = Math.max(...prices);
-    const minPrice = Math.min(...prices);
-    const priceRange = maxPrice - minPrice;
+    // Draw typical data flows
+    const throughputs = data.map(d => d.throughput);
+    const maxThroughput = Math.max(...throughputs);
+    const minThroughput = Math.min(...throughputs);
+    const throughputRange = maxThroughput - minThroughput;
 
     const barWidth = canvas.width / data.length;
 
     for (let i = 0; i < data.length; i++) {
       const x = i * barWidth;
-      const price = data[i].price;
-      const normalizedPrice = ((price - minPrice) / priceRange);
-      const y = canvas.height - (normalizedPrice * canvas.height * 0.8) - 40;
+      const throughput = data[i].throughput;
+      const normalizedThroughput = ((throughput - minThroughput) / throughputRange);
+      const y = canvas.height - (normalizedThroughput * canvas.height * 0.8) - 40;
 
       // Simple bar chart style
-      const barHeight = normalizedPrice * canvas.height * 0.8;
+      const barHeight = normalizedThroughput * canvas.height * 0.8;
       
       // Color based on trend
-      const trend = i > 0 ? data[i].price - data[i-1].price : 0;
+      const trend = i > 0 ? data[i].throughput - data[i-1].throughput : 0;
       ctx.fillStyle = trend >= 0 ? '#00ff00' : '#ff0000';
       ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
-
-      // Draw volume at bottom
-      const volumeHeight = (data[i].volume / Math.max(...data.map(d => d.volume))) * 30;
-      ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
-      ctx.fillRect(x + 2, canvas.height - volumeHeight, barWidth - 4, volumeHeight);
     }
 
-    // Draw traditional indicators
-    drawMovingAverage(ctx, data, canvas.width, canvas.height, minPrice, priceRange);
+    // Draw classical indicators
+    drawMovingAverage(ctx, data, canvas.width, canvas.height, minThroughput, throughputRange);
     
-    // Highlight traditional anomalies
-    const traditionalAnomalies = anomalies.filter(a => a.type === 'classical');
-    for (const anomaly of traditionalAnomalies) {
+    // Highlight classical anomalies
+    const classicalAnomalies = anomalies.filter(a => a.type === 'classical');
+    for (const anomaly of classicalAnomalies) {
       const index = data.findIndex(d => d.timestamp === anomaly.timestamp);
       if (index >= 0) {
         const x = index * barWidth + barWidth / 2;
@@ -103,19 +99,19 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
     // Label
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 16px monospace';
-    ctx.fillText('TRADITIONAL ANALYSIS', 10, 30);
+    ctx.fillText('CLASSICAL INFORMATION FLOW', 10, 30);
     ctx.font = '12px monospace';
-    ctx.fillText(`Anomalies: ${traditionalAnomalies.length}`, 10, 50);
+    ctx.fillText(`Anomalies: ${classicalAnomalies.length}`, 10, 50);
   };
 
-  const drawQuantumChart = () => {
-    const canvas = quantumCanvasRef.current;
+  const drawNegentropicChart = () => {
+    const canvas = negentropicCanvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear with quantum theme
+    // Clear with negentropic theme
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -147,14 +143,14 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
     }
     ctx.stroke();
 
-    // Draw entropy wave (inverted)
+    // Draw negentropy wave
     ctx.strokeStyle = '#ff00ff';
     ctx.lineWidth = 2;
     ctx.beginPath();
     for (let i = 0; i < dataLength; i++) {
       const x = i * barWidth;
-      const entropy = signalData.entropy[i];
-      const y = height - ((1 - entropy) * height * 0.8) - 40;
+      const negentropy = signalData.negentropy[i];
+      const y = height - (negentropy * height * 0.8) - 40;
       
       if (i === 0) {
         ctx.moveTo(x, y);
@@ -178,14 +174,14 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
       }
     }
 
-    // Highlight quantum anomalies
-    const quantumAnomalies = anomalies.filter(a => a.type === 'negentropic');
-    for (const anomaly of quantumAnomalies) {
+    // Highlight negentropic anomalies
+    const negentropicAnomalies = anomalies.filter(a => a.type === 'negentropic');
+    for (const anomaly of negentropicAnomalies) {
       const index = data.findIndex(d => d.timestamp === anomaly.timestamp);
       if (index >= 0) {
         const x = index * barWidth + barWidth / 2;
         
-        // Draw pulsing quantum anomaly marker
+        // Draw pulsing negentropic anomaly marker
         ctx.fillStyle = getSeverityColor(anomaly.severity);
         ctx.shadowBlur = 20;
         ctx.shadowColor = getSeverityColor(anomaly.severity);
@@ -209,21 +205,21 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
     // Labels
     ctx.fillStyle = '#00ff41';
     ctx.font = 'bold 16px monospace';
-    ctx.fillText('QUANTUM SIGNAL ANALYSIS', 10, 30);
+    ctx.fillText('NEGENTROPIC COUPLING FLOW', 10, 30);
     ctx.font = '12px monospace';
-    ctx.fillText(`Anomalies: ${quantumAnomalies.length}`, 10, 50);
+    ctx.fillText(`Anomalies: ${negentropicAnomalies.length}`, 10, 50);
     ctx.fillText(`Coherence`, 10, height - 50);
     ctx.fillStyle = '#ff00ff';
-    ctx.fillText(`Entropy (inverted)`, 10, height - 30);
-  };
+    ctx.fillText(`Negentropy`, 10, height - 30);
+  }   ;
 
   const drawMovingAverage = (
     ctx: CanvasRenderingContext2D,
-    data: LiqDataPoint[],
+    data: DataPoint[],
     width: number,
     height: number,
-    minPrice: number,
-    priceRange: number
+    minThroughput: number,
+    throughputRange: number
   ) => {
     const period = 7; // 7-period MA
     if (data.length < period) return;
@@ -235,9 +231,9 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
     const barWidth = width / data.length;
 
     for (let i = period - 1; i < data.length; i++) {
-      const sum = data.slice(i - period + 1, i + 1).reduce((acc, d) => acc + d.price, 0);
+      const sum = data.slice(i - period + 1, i + 1).reduce((acc, d) => acc + d.throughput, 0);
       const ma = sum / period;
-      const normalizedMA = ((ma - minPrice) / priceRange);
+      const normalizedMA = ((ma - minThroughput) / throughputRange);
       const y = height - (normalizedMA * height * 0.8) - 40;
       const x = i * barWidth;
 
@@ -247,55 +243,55 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
         ctx.lineTo(x, y);
       }
     }
-    ctx.stroke();
+    ctx.stroke(); 
   };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Traditional Analysis */}
+      {/* Classical Information Flow */}
       <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
-        <canvas
-          ref={traditionalCanvasRef}
+        <canvas 
+          ref={classicalCanvasRef}
           width={600}
           height={400}
           className="w-full rounded"
         />
         <div className="mt-4 space-y-2">
-          <div className="text-sm text-gray-400">Traditional Technical Analysis</div>
+          <div className="text-sm text-gray-400">Classical Information Flow Analysis</div>
           <div className="text-xs text-gray-500">
-            • Price action and candlesticks
+            • Throughput monitoring
             <br />
             • Moving averages (MA)
             <br />
-            • Volume analysis
+            • Trend analysis
             <br />
-            • Chart patterns
+            • Anomaly detection
           </div>
           {anomalies.filter(a => a.type === 'classical').slice(0, 3).map((anomaly, i) => (
             <div key={i} className="text-xs p-2 bg-gray-800 rounded">
-              <span className={`font-bold ${getSeverityTextColor(anomaly.severity)}`}>
+              <span className={`font-bold ${getSeverityTextColor(anomaly.severity)}`}>  
                 {anomaly.severity.toUpperCase()}:
               </span>{' '}
               {anomaly.description}
             </div>
+
           ))}
         </div>
       </div>
-
-      {/* Quantum Analysis */}
+      {/* Negentropic Coupling Flow */}
       <div className="bg-black border border-green-500 rounded-lg p-4">
         <canvas
-          ref={quantumCanvasRef}
+
+          ref={negentropicCanvasRef}
           width={600}
           height={400}
           className="w-full rounded"
         />
         <div className="mt-4 space-y-2">
-          <div className="text-sm text-green-400">Quantum Signal Analysis</div>
+          <div className="text-sm text-green-400">Negentropic Coupling Flow Analysis</div>
           <div className="text-xs text-green-600">
             • Field coherence patterns
             <br />
-            • Entropy analysis
+            • Negentropy analysis
             <br />
             • Phase lock detection
             <br />
@@ -304,55 +300,21 @@ export const TraditionalVsQuantum: React.FC<TraditionalVsQuantumProps> = ({
           {anomalies.filter(a => a.type === 'negentropic').slice(0, 3).map((anomaly, i) => (
             <div key={i} className="text-xs p-2 bg-green-950 border border-green-800 rounded">
               <span className={`font-bold ${getSeverityTextColor(anomaly.severity)}`}>
-                ⚡ {anomaly.severity.toUpperCase()}:
+                {anomaly.severity.toUpperCase()}:
               </span>{' '}
               {anomaly.description}
             </div>
           ))}
-        </div>
-      </div>
 
-      {/* Comparison Summary */}
-      <div className="col-span-1 lg:col-span-2 bg-gray-900 border border-yellow-500 rounded-lg p-6">
-        <h3 className="text-xl font-bold text-yellow-400 mb-4">
-          🌟 QUANTUM ADVANTAGE
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(() => {
-            // Extract calculations to avoid repeated filtering and division by zero
-            const quantumAnomalies = anomalies.filter(a => a.type === 'negentropic').length;
-            const traditionalAnomalies = anomalies.filter(a => a.type === 'classical').length;
-            const coherenceLength = signalData.coherence.length;
-            const highCoherence = coherenceLength > 0 
-              ? Math.round((signalData.coherence.filter(c => c > 0.7).length / coherenceLength) * 100)
-              : 0;
-            const coherentStates = signalData.fieldState.filter(s => s === 'coherent').length;
-
-            return (
-              <>
-                <div className="bg-gray-800 p-4 rounded">
-                  <div className="text-2xl font-bold text-green-400">
-                    {quantumAnomalies - traditionalAnomalies}
-                  </div>
-                  <div className="text-sm text-gray-400">More Anomalies Detected</div>
-                </div>
-                <div className="bg-gray-800 p-4 rounded">
-                  <div className="text-2xl font-bold text-green-400">
-                    {highCoherence}%
-                  </div>
-                  <div className="text-sm text-gray-400">Field Coherence</div>
-                </div>
-                <div className="bg-gray-800 p-4 rounded">
-                  <div className="text-2xl font-bold text-green-400">
-                    {coherentStates}
-                  </div>
-                  <div className="text-sm text-gray-400">Coherent States</div>
-                </div>
-              </>
-            );
-          })()}
+          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <EntropyField history={simulationHistory} />
+            <NegentropyGauge metrics={currentMetrics} />
+            <CouplingMap state={currentState} />
+          </div> */}
         </div>
       </div>
     </div>
   );
-};
+
+}
+  

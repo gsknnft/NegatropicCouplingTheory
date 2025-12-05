@@ -1,8 +1,24 @@
+export type NCFMode = 'macro' | 'defensive' | 'balanced';
+
+export interface SignalData {
+  coherence: number[];
+  negentropy: number[];
+  fieldState: string[];
+}
+
+export interface NCFDiagnostics {
+  getHistory: (steps?: number) => Promise<NCFResponse<SimulationMetrics[]>>;
+  exportCSV: () => Promise<NCFResponse<string>>;
+  getHealth: () => Promise<NCFResponse<{ cpu: number; memory: number }>>;
+}
+
+
 export interface NCFParams {
   steps?: number;
   mode?: 'macro' | 'defensive' | 'balanced';
   nodes?: number;
   edges?: number;
+  scenarioPath?: string;
 }
 
 export interface SimulationMetrics {
@@ -10,6 +26,12 @@ export interface SimulationMetrics {
   coherence: number;
   velocity: number;
   time: number;
+
+  /** Derived / optional metrics for visualization */
+  entropy?: number;        // H = 1 - N (or measured directly)
+  throughput?: number;     // Data rate through the system
+  flowRate?: number;       // Alias for throughput (compatibility)
+  fieldState?: 'macro' | 'balanced' | 'defensive';
 }
 
 export interface Edge {
@@ -32,7 +54,16 @@ export interface SimulationState {
   meshMetrics: SimulationMetrics;
   edgeMetrics: Map<string, EdgeMetrics>;
   history: SimulationMetrics[];
+  anomalies?: AnomalyDetection[];
 }
+
+export interface AnomalyDetection {
+  timestamp: number;
+  type: 'classical' | 'negentropic';
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+}
+
 
 export interface NCFResponse<T = any> {
   success: boolean;
@@ -48,22 +79,21 @@ declare global {
       step: () => Promise<NCFResponse<SimulationMetrics>>;
       getState: () => Promise<NCFResponse<SimulationState>>;
       reset: (params: NCFParams) => Promise<NCFResponse<SimulationState>>;
+    } & NCFDiagnostics;
+    quantum: {
+      platform: string;
+      version: string;
+      decide: (signalData: any, fieldStateData: any) => Promise<any>;
+      updateParams: (params: Partial<any>) => Promise<any>;
+      measure: (baseConfidence: number) => Promise<any>;
+      getStatus: () => Promise<any>;
+      getMetrics: () => Promise<any>;
+      getErrors: () => Promise<any>;
+      getHealth: () => Promise<any>;
+      getHistory: (count?: number) => Promise<any[]>;
+      getHistoryStats: () => Promise<any>;
+      exportHistory: (count?: number) => Promise<string>;
+      clearHistory: () => Promise<{ success: boolean }>;
     };
-    // quantum: {
-    //   platform: string;
-    //   version: string;
-    //   decide: (signalData: SignalFrame, fieldStateData: FieldState) => Promise<QuantumDecisionResponse>;
-    //   updateParams: (params: Partial<DecisionParams>) => Promise<QuantumParamsResponse>;
-    //   measure: (baseConfidence: number) => Promise<QuantumMeasurementResponse>;
-    //   getStatus: () => Promise<QuantumStatusResponse>;
-    //   getMetrics: () => Promise<any>;
-    //   getErrors: () => Promise<any>;
-    //   getHealth: () => Promise<any>;
-    //   getHistory: (count?: number) => Promise<any[]>;
-    //   getHistoryStats: () => Promise<any>;
-    //   exportHistory: (count?: number) => Promise<string>;
-    //   clearHistory: () => Promise<{ success: boolean }>;
-    // };
   }
 }
-

@@ -5,29 +5,60 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { SigilMetrics } from 'shared';
 
-interface LiquidityFlowProps {
-  reserveIn: number;
-  reserveOut: number;
-  swapAmount: number;
+export interface DataContext extends FlowData {
+  timestamp: number;
+  value: number;
+  probabilityDistribution?: number[];
+  id?: string;
+  weight?: number;
+  trustLevel?: number;
+  type?: string;
+  secure?: boolean;
+  sigilnetMetrics?: SigilMetrics;
+  payload?: Record<string, any>;
+  tags?: string[];
+}
+interface FlowData {
+  dataFlowIn: number;
+  dataFlowOut: number;
+  payloadSize: number;
+  efficiency: number;
+  impactRatio: number;
+  flowRate?: number;
+  flowCapacity?: number;
+  flowUtilization?: number;
+  flowEfficiency?: number;
+  flowImpactRatio?: number;
+}
+interface FlowProps {
+  dataFlowIn: number;
+  dataFlowOut: number;
+  payloadSize: number;
   efficiency: number;
   impactRatio: number;
   poolName?: string;
 }
+/**
+ * DataFlow - Data Stream Visualization
+ * 
+ * Shows real-time data dynamics and transfer efficiency
+ */
 
-export const LiquidityFlow: React.FC<LiquidityFlowProps> = ({
-  reserveIn,
-  reserveOut,
-  swapAmount,
+export const DataFlow: React.FC<FlowProps> = ({
+  dataFlowIn,
+  dataFlowOut,
+  payloadSize,
   efficiency,
   impactRatio,
-  poolName = 'Pool'
+  poolName = 'Node'
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     drawLiquidityFlow();
-  }, [reserveIn, reserveOut, swapAmount, efficiency]);
+  }, [dataFlowIn, dataFlowOut, payloadSize, efficiency]);
 
   const drawLiquidityFlow = () => {
     const canvas = canvasRef.current;
@@ -50,10 +81,10 @@ export const LiquidityFlow: React.FC<LiquidityFlowProps> = ({
     const poolSpacing = 250;
 
     // Input pool (left)
-    drawPool(ctx, centerX - poolSpacing / 2, centerY, poolRadius, reserveIn, '#4a9eff', 'INPUT');
+    drawPool(ctx, centerX - poolSpacing / 2, centerY, poolRadius, dataFlowIn, '#4a9eff', 'INPUT');
 
     // Output pool (right)
-    drawPool(ctx, centerX + poolSpacing / 2, centerY, poolRadius, reserveOut, '#ff9a4a', 'OUTPUT');
+    drawPool(ctx, centerX + poolSpacing / 2, centerY, poolRadius, dataFlowOut, '#ff9a4a', 'OUTPUT');
 
     // Draw flow arrow
     drawFlowArrow(
@@ -62,7 +93,7 @@ export const LiquidityFlow: React.FC<LiquidityFlowProps> = ({
       centerY,
       centerX + poolSpacing / 2 - poolRadius,
       centerY,
-      swapAmount,
+      payloadSize,
       efficiency
     );
 
@@ -281,9 +312,9 @@ export const LiquidityFlow: React.FC<LiquidityFlowProps> = ({
   };
 
   return (
-    <div className="liquidity-flow bg-gray-900 border border-blue-500 rounded-lg p-4">
+    <div className="data-flow bg-gray-900 border border-blue-500 rounded-lg p-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-blue-400 text-xl font-bold">{poolName} LIQUIDITY FLOW</h2>
+        <h2 className="text-blue-400 text-xl font-bold">{poolName} DATA STREAM</h2>
         <div className="flex gap-4 text-sm">
           <div>
             <span className="text-gray-500">Impact:</span>
@@ -300,25 +331,20 @@ export const LiquidityFlow: React.FC<LiquidityFlowProps> = ({
         </div>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={400}
-        className="w-full border border-blue-900 rounded"
-      />
+      <canvas ref={canvasRef} width={800} height={400} className="w-full border border-blue-900 rounded" />
 
       <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
         <div className="bg-blue-950 p-3 rounded">
-          <div className="text-gray-400 text-xs">INPUT RESERVE</div>
-          <div className="text-blue-400 text-lg font-bold">{formatAmount(reserveIn)}</div>
+          <div className="text-gray-400 text-xs">DATA IN</div>
+          <div className="text-blue-400 text-lg font-bold">{formatAmount(dataFlowIn)}</div>
         </div>
         <div className="bg-purple-950 p-3 rounded">
-          <div className="text-gray-400 text-xs">SWAP AMOUNT</div>
-          <div className="text-purple-400 text-lg font-bold">{formatAmount(swapAmount)}</div>
+          <div className="text-gray-400 text-xs">PAYLOAD SIZE</div>
+          <div className="text-purple-400 text-lg font-bold">{formatAmount(payloadSize)}</div>
         </div>
         <div className="bg-orange-950 p-3 rounded">
-          <div className="text-gray-400 text-xs">OUTPUT RESERVE</div>
-          <div className="text-orange-400 text-lg font-bold">{formatAmount(reserveOut)}</div>
+          <div className="text-gray-400 text-xs">DATA OUT</div>
+          <div className="text-orange-400 text-lg font-bold">{formatAmount(dataFlowOut)}</div>
         </div>
       </div>
     </div>

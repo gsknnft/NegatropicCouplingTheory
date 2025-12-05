@@ -5,6 +5,7 @@ import { NegentropyGauge } from './components/NegentropyGauge';
 import { CouplingMap } from './components/CouplingMap';
 import { PolicyConsole } from './components/PolicyConsole';
 import './styles/theme.css';
+import { ClassicalVsNegentropic } from './components/ClassicalVsNegentropic';
 
 type EdgeMetricPayload =
   | Map<string, EdgeMetrics>
@@ -37,6 +38,26 @@ const normalizeState = (raw: SimulationState): SimulationState => {
 
 export const App: React.FC = () => {
   const [state, setState] = useState<SimulationState | null>(null);
+  const [scenarioPath, setScenarioPath] = useState<string>('examples/entropy_mesh_example.json');
+  const [availableScenarios, setAvailableScenarios] = useState([
+    { label: 'Entropy Mesh Example', value: 'examples/entropy_mesh_example.json' },
+    { label: 'NCF Python Model', value: 'models/NCF_simulation.py' },
+    { label: 'NCF Wolfram Model', value: 'models/NCF_simulation.wl' },
+    { label: 'Run Simulation Notebook', value: 'examples/run_simulation.ipynb' },
+  ]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const virtualPath = `uploads/${file.name}`;
+      setAvailableScenarios(prev => [
+        ...prev,
+        { label: `Uploaded: ${file.name}`, value: virtualPath }
+      ]);
+      setScenarioPath(virtualPath);
+      // TODO: send file to backend for processing
+    }
+  };
   const [autoDemo, setAutoDemo] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   // const [mode, setMode] = useState<'demo' | 'real'>('demo');
@@ -64,7 +85,7 @@ export const App: React.FC = () => {
   // Initialize simulation on mount
   useEffect(() => {
     initializeSimulation();
-  }, []);
+  }, [scenarioPath]);
 
   // Auto-demo mode
   useEffect(() => {
@@ -87,7 +108,7 @@ export const App: React.FC = () => {
 
   const initializeSimulation = async () => {
     try {
-      const response = await window.ncf.runSimulation({ nodes: 5, edges: 10 });
+      const response = await window.ncf.runSimulation({ nodes: 5, edges: 10, scenarioPath });
       if (response.success && response.state) {
         setState(normalizeState(response.state as SimulationState));
       }
@@ -118,8 +139,7 @@ export const App: React.FC = () => {
         clearInterval(intervalId);
         setIntervalId(null);
       }
-      
-      const response = await window.ncf.reset({ nodes: 5, edges: 10 });
+      const response = await window.ncf.reset({ nodes: 5, edges: 10, scenarioPath });
       if (response.success && response.state) {
         setState(normalizeState(response.state as SimulationState));
       }
@@ -140,6 +160,21 @@ export const App: React.FC = () => {
       </header>
 
       <div className="controls">
+        <select
+          value={scenarioPath}
+          onChange={e => setScenarioPath(e.target.value)}
+          style={{ marginRight: 16 }}
+        >
+          {availableScenarios.map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+        <input
+          type="file"
+          accept=".json,.py,.wl,.ipynb"
+          style={{ marginRight: 16 }}
+          onChange={handleFileUpload}
+        />
         <button onClick={stepSimulation} disabled={autoDemo}>
           Step Simulation
         </button>
@@ -159,7 +194,24 @@ export const App: React.FC = () => {
           )}
         </div>
       </div>
-
+      <div className="panel panel-large">
+        <h2>Classical vs Negentropic</h2>
+        {state && (
+          <ClassicalVsNegentropic
+            data={state.history.map(h => ({
+              timestamp: h.time,
+              throughput: h.throughput ?? h.flowRate ?? h.velocity * 100,
+              entropy: h.entropy ?? (1 - h.negentropy),
+            }))}
+            signalData={{
+              coherence: state.history.map(h => h.coherence),
+              negentropy: state.history.map(h => h.negentropy),
+              fieldState: state.history.map(h => h.fieldState ?? 'balanced'),
+            }}
+            anomalies={state.anomalies ?? []}
+          />
+        )}
+      </div>
       <div className="dashboard">
         <div className="panel panel-large">
           <h2>Coupling Map</h2>
