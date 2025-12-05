@@ -39,6 +39,20 @@ NCF powers **SigilNet**, **QWormhole**, and related architectures — turning *e
 
 ---
 
+## Installation
+
+### Python Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Wolfram Language
+
+Requires Wolfram Language/Mathematica (version 12.0 or later).
+
+---
+
 ## Quick Start (Wolfram)
 
 ```wolfram
@@ -52,6 +66,13 @@ PlotNegentropyEvolution[]
 ```python
 from models.ncf_simulation import run_simulation
 run_simulation(steps=10, mode="macro")
+```
+
+Alternatively, explore the interactive Jupyter notebook:
+
+```bash
+cd examples
+jupyter notebook run_simulation.ipynb
 ```
 
 ---
