@@ -7,6 +7,7 @@ import {
   default as electronDevtoolsInstaller,
   REACT_DEVELOPER_TOOLS,
 } from 'electron-devtools-installer';
+import { ncfService, NCFParams, NCFResponse } from './services/ncfService';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -20,7 +21,7 @@ async function installExtensions() {
 }
 
 async function createWindow() {
-  const dev = true;// !app.isPackaged;
+  const dev = true; // !app.isPackaged;
 
   if (dev) await installExtensions();
 
@@ -65,5 +66,55 @@ app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+function registerNCFHandlers() {
+  const success = <T extends keyof Pick<NCFResponse, 'state' | 'metrics'>>(
+    key: T,
+    payload: NonNullable<NCFResponse[T]>,
+  ): NCFResponse => ({ success: true, [key]: payload });
+
+  const failure = (error: unknown): NCFResponse => ({
+    success: false,
+    error: error instanceof Error ? error.message : 'Unknown simulation error',
+  });
+
+  ipcMain.handle('ncf:run', async (_event, params: NCFParams = {}) => {
+    try {
+      const state = await ncfService.run(params);
+      return success('state', state);
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  ipcMain.handle('ncf:step', async () => {
+    try {
+      const metrics = await ncfService.step();
+      return success('metrics', metrics);
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  ipcMain.handle('ncf:state', async () => {
+    try {
+      const state = await ncfService.getState();
+      return success('state', state);
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  ipcMain.handle('ncf:reset', async (_event, params: NCFParams = {}) => {
+    try {
+      const state = await ncfService.reset(params);
+      return success('state', state);
+    } catch (error) {
+      return failure(error);
+    }
+  });
+}
+
+registerNCFHandlers();
 
 ipcMain.handle('ping', () => 'pong');

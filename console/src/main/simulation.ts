@@ -2,7 +2,7 @@
  * Negentropic Coupling Framework - TypeScript Simulation Module
  * Author: gsknnft (SigilNet Core Research)
  * Version: 1.0
- * 
+ *
  * Quantum-Electron secure implementation with hardened NCF dynamics
  */
 
@@ -35,6 +35,18 @@ export interface SimulationState {
   history: SimulationMetrics[];
 }
 
+export interface SimulationScenario {
+  nodes: number;
+  edges: Edge[];
+  distributions: Map<string, number[]>;
+}
+
+export interface SimulationOptions {
+  nodes?: number;
+  edges?: number;
+  scenario?: SimulationScenario;
+}
+
 export class NCFSimulation {
   private nNodes: number;
   private nEdges: number;
@@ -42,19 +54,27 @@ export class NCFSimulation {
   private probabilities: Map<string, number[]>;
   private history: SimulationMetrics[];
   private time: number;
+  private scenario?: SimulationScenario;
 
-  constructor(nNodes: number = 5, nEdges: number = 10) {
-    this.nNodes = nNodes;
-    this.nEdges = Math.min(nEdges, nNodes * nNodes);
+  constructor(options: SimulationOptions = {}) {
+    const { nodes = 5, edges = 10, scenario } = options;
+    this.nNodes = nodes;
+    this.nEdges = Math.min(edges, nodes * nodes);
     this.edges = [];
     this.probabilities = new Map();
     this.history = [];
     this.time = 0;
+    this.scenario = scenario;
 
     this.initializeMesh();
   }
 
   private initializeMesh(): void {
+    if (this.scenario) {
+      this.applyScenario(this.scenario);
+      return;
+    }
+
     // Create random directed edges
     const allPossible: Edge[] = [];
     for (let i = 0; i < this.nNodes; i++) {
@@ -70,18 +90,41 @@ export class NCFSimulation {
     while (selectedIndices.size < Math.min(this.nEdges, allPossible.length)) {
       selectedIndices.add(Math.floor(Math.random() * allPossible.length));
     }
-    
-    this.edges = Array.from(selectedIndices).map(i => allPossible[i]);
+
+    this.edges = Array.from(selectedIndices).map((i) => allPossible[i]);
 
     // Initialize random probability distributions for each edge
     for (const edge of this.edges) {
       const key = this.edgeKey(edge);
       const probs = Array.from({ length: 10 }, () => Math.random() * 0.9 + 0.1);
       const sum = probs.reduce((a, b) => a + b, 0);
-      this.probabilities.set(key, probs.map(p => p / sum));
+      this.probabilities.set(
+        key,
+        probs.map((p) => p / sum),
+      );
     }
 
-    console.log(`Mesh initialized: ${this.nNodes} nodes, ${this.edges.length} edges`);
+    console.log(
+      `Mesh initialized: ${this.nNodes} nodes, ${this.edges.length} edges`,
+    );
+  }
+
+  private applyScenario(scenario: SimulationScenario): void {
+    this.nNodes = scenario.nodes;
+    this.edges = scenario.edges;
+    this.nEdges = scenario.edges.length;
+    this.probabilities.clear();
+
+    for (const [key, probs] of scenario.distributions.entries()) {
+      const sum = probs.reduce((a, b) => a + b, 0);
+      const normalized = sum > 0 ? probs.map((p) => p / sum) : probs;
+      this.probabilities.set(key, normalized);
+    }
+
+    console.log(
+      `Scenario applied: ${this.nNodes} nodes, ${this.edges.length} edges, ` +
+        `${this.probabilities.size} distributions`,
+    );
   }
 
   private edgeKey(edge: Edge): string {
@@ -94,7 +137,7 @@ export class NCFSimulation {
     if (!p) return 0.0;
 
     // Shannon entropy: H = -∑ p log₂ p
-    const pNonzero = p.filter(val => val > 0);
+    const pNonzero = p.filter((val) => val > 0);
     return -pNonzero.reduce((sum, val) => sum + val * Math.log2(val), 0);
   }
 
@@ -122,7 +165,7 @@ export class NCFSimulation {
 
   private coherence(edge: Edge): number {
     const reverseEdge: Edge = { source: edge.target, target: edge.source };
-    
+
     const h1 = this.entropyField(edge);
     const h2 = this.entropyField(reverseEdge);
     const hmax1 = this.hmax(edge);
@@ -136,7 +179,7 @@ export class NCFSimulation {
 
   private policy(edge: Edge): 'macro' | 'defensive' | 'balanced' {
     const n = this.negentropicIndex(edge);
-    
+
     if (n > 0.8) return 'macro';
     if (n < 0.3) return 'defensive';
     return 'balanced';
@@ -149,22 +192,30 @@ export class NCFSimulation {
       if (!probs) continue;
 
       // Add small random perturbation and renormalize
-      const noise = Array.from({ length: probs.length }, () => Math.random() * 0.1);
+      const noise = Array.from(
+        { length: probs.length },
+        () => Math.random() * 0.1,
+      );
       const newProbs = probs.map((p, i) => p * 0.9 + noise[i]);
       const sum = newProbs.reduce((a, b) => a + b, 0);
-      this.probabilities.set(key, newProbs.map(p => p / sum));
+      this.probabilities.set(
+        key,
+        newProbs.map((p) => p / sum),
+      );
     }
   }
 
   public evolve(): SimulationMetrics {
     // Compute metrics for all edges
-    const negentropies = this.edges.map(e => this.negentropicIndex(e));
-    const coherences = this.edges.map(e => this.coherence(e));
-    
+    const negentropies = this.edges.map((e) => this.negentropicIndex(e));
+    const coherences = this.edges.map((e) => this.coherence(e));
+
     // Compute mesh-level averages
-    const avgNegentropy = negentropies.reduce((a, b) => a + b, 0) / negentropies.length;
-    const avgCoherence = coherences.reduce((a, b) => a + b, 0) / coherences.length;
-    
+    const avgNegentropy =
+      negentropies.reduce((a, b) => a + b, 0) / negentropies.length;
+    const avgCoherence =
+      coherences.reduce((a, b) => a + b, 0) / coherences.length;
+
     // Velocity from previous step
     let avgVelocity = 0;
     if (this.history.length > 0) {
@@ -191,7 +242,7 @@ export class NCFSimulation {
 
   public getState(): SimulationState {
     const edgeMetrics = new Map<string, EdgeMetrics>();
-    
+
     for (const edge of this.edges) {
       const key = this.edgeKey(edge);
       edgeMetrics.set(key, {
@@ -203,9 +254,10 @@ export class NCFSimulation {
       });
     }
 
-    const meshMetrics: SimulationMetrics = this.history.length > 0
-      ? this.history[this.history.length - 1]
-      : { negentropy: 0, coherence: 0, velocity: 0, time: 0 };
+    const meshMetrics: SimulationMetrics =
+      this.history.length > 0
+        ? this.history[this.history.length - 1]
+        : { negentropy: 0, coherence: 0, velocity: 0, time: 0 };
 
     return {
       nodes: this.nNodes,
@@ -221,9 +273,13 @@ export class NCFSimulation {
     return this.history;
   }
 
-  public reset(nNodes?: number, nEdges?: number): void {
-    if (nNodes) this.nNodes = nNodes;
-    if (nEdges) this.nEdges = nEdges;
+  public reset(options: SimulationOptions = {}): void {
+    const { nodes, edges } = options;
+    if (typeof nodes === 'number') this.nNodes = nodes;
+    if (typeof edges === 'number') this.nEdges = edges;
+    if ('scenario' in options) {
+      this.scenario = options.scenario;
+    }
     this.edges = [];
     this.probabilities.clear();
     this.history = [];

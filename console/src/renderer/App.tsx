@@ -10,7 +10,28 @@ export const App: React.FC = () => {
   const [state, setState] = useState<SimulationState | null>(null);
   const [autoDemo, setAutoDemo] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [mode, setMode] = useState<'demo' | 'real'>('demo');
+  const [quantumMode, setQuantumMode] = useState(true);
+  const [viewMode, setViewMode] = useState<'swap' | 'comparison' | 'diagnostics'>('swap');
+  const [quantumStatus, setQuantumStatus] = useState<{ initialized: boolean }>({ initialized: false });
+  const [comparisonData, setComparisonData] = useState({
+    data: [] as any[],
+    signalData: {
+      coherence: [] as number[],
+      entropy: [] as number[],
+      fieldState: [] as string[],
+    },
+    anomalies: [] as any[],
+  });
 
+  // Check quantum adapter status on mount
+  useEffect(() => {
+    if (window.quantum) {
+      window.quantum.getStatus().then(status => {
+        setQuantumStatus(status);
+      });
+    }
+  }, []);
   // Initialize simulation on mount
   useEffect(() => {
     initializeSimulation();
