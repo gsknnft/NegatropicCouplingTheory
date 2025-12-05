@@ -24,8 +24,9 @@ meshState = <||>;
 historyLog = {};
 
 (* Initialize mesh with random probability distributions *)
-InitializeMesh[nNodes_, nEdges_] := Module[{edges, probs},
-  edges = RandomSample[Tuples[Range[nNodes], 2], Min[nEdges, nNodes^2]];
+InitializeMesh[nNodes_, nEdges_] := Module[{edges, allPairs, probs},
+  allPairs = Select[Tuples[Range[nNodes], 2], #[[1]] != #[[2]] &];
+  edges = RandomSample[allPairs, Min[nEdges, Length[allPairs]]];
   probs = Table[
     Normalize[RandomReal[{0.1, 1}, 10], Total],
     {Length[edges]}

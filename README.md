@@ -64,7 +64,7 @@ PlotNegentropyEvolution[]
 ## Quick Start (Python)
 
 ```python
-from models.ncf_simulation import run_simulation
+from models.NCF_simulation import run_simulation
 run_simulation(steps=10, mode="macro")
 ```
 

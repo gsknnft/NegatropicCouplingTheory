@@ -171,7 +171,7 @@ Nᵢⱼ(t₁) ≤ Nᵢⱼ(t₂) ⟹ policyᵢⱼ(t₁) ⪯ policyᵢⱼ(t₂)
 
 | NCF Component | Implementation |
 |---------------|----------------|
-| `Nᵢⱼ(t)` | `computeNeganticIndex()` |
+| `Nᵢⱼ(t)` | `computeNegentropicIndex()` |
 | `vᵢⱼ(t)` | `deriveEntropyVelocity()` |
 | `Cᵢⱼ(t)` | `measureCoherence()` |
 | `policyᵢⱼ(t)` | `deriveSessionFlowPolicy()` |
