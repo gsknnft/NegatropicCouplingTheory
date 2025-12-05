@@ -1,5 +1,3 @@
-import type { DecisionParams, FieldState } from '@hackathon/mock-swap-core';
-
 export interface NCFParams {
   steps?: number;
   mode?: 'macro' | 'defensive' | 'balanced';
@@ -51,21 +49,21 @@ declare global {
       getState: () => Promise<NCFResponse<SimulationState>>;
       reset: (params: NCFParams) => Promise<NCFResponse<SimulationState>>;
     };
-    quantum: {
-      platform: string;
-      version: string;
-      decide: (signalData: SignalFrame, fieldStateData: FieldState) => Promise<QuantumDecisionResponse>;
-      updateParams: (params: Partial<DecisionParams>) => Promise<QuantumParamsResponse>;
-      measure: (baseConfidence: number) => Promise<QuantumMeasurementResponse>;
-      getStatus: () => Promise<QuantumStatusResponse>;
-      getMetrics: () => Promise<any>;
-      getErrors: () => Promise<any>;
-      getHealth: () => Promise<any>;
-      getHistory: (count?: number) => Promise<any[]>;
-      getHistoryStats: () => Promise<any>;
-      exportHistory: (count?: number) => Promise<string>;
-      clearHistory: () => Promise<{ success: boolean }>;
-    };
+    // quantum: {
+    //   platform: string;
+    //   version: string;
+    //   decide: (signalData: SignalFrame, fieldStateData: FieldState) => Promise<QuantumDecisionResponse>;
+    //   updateParams: (params: Partial<DecisionParams>) => Promise<QuantumParamsResponse>;
+    //   measure: (baseConfidence: number) => Promise<QuantumMeasurementResponse>;
+    //   getStatus: () => Promise<QuantumStatusResponse>;
+    //   getMetrics: () => Promise<any>;
+    //   getErrors: () => Promise<any>;
+    //   getHealth: () => Promise<any>;
+    //   getHistory: (count?: number) => Promise<any[]>;
+    //   getHistoryStats: () => Promise<any>;
+    //   exportHistory: (count?: number) => Promise<string>;
+    //   clearHistory: () => Promise<{ success: boolean }>;
+    // };
   }
 }
 

@@ -1,37 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { SimulationState } from './types';
+import { SimulationState, EdgeMetrics } from './types';
 import { EntropyField } from './components/EntropyField';
 import { NegentropyGauge } from './components/NegentropyGauge';
 import { CouplingMap } from './components/CouplingMap';
 import { PolicyConsole } from './components/PolicyConsole';
 import './styles/theme.css';
 
+type EdgeMetricPayload =
+  | Map<string, EdgeMetrics>
+  | Array<[string, EdgeMetrics]>
+  | Record<string, EdgeMetrics>
+  | undefined
+  | null;
+
+const normalizeState = (raw: SimulationState): SimulationState => {
+  const maybeEdgeMetrics = (raw as SimulationState & {
+    edgeMetrics: EdgeMetricPayload;
+  }).edgeMetrics;
+
+  const normalizedEdgeMetrics =
+    maybeEdgeMetrics instanceof Map
+      ? maybeEdgeMetrics
+      : Array.isArray(maybeEdgeMetrics)
+        ? new Map(maybeEdgeMetrics as [string, EdgeMetrics][])
+        : new Map(
+            Object.entries(
+              (maybeEdgeMetrics ?? {}) as Record<string, EdgeMetrics>,
+            ) as [string, EdgeMetrics][],
+          );
+
+  return {
+    ...raw,
+    edgeMetrics: normalizedEdgeMetrics,
+  };
+};
+
 export const App: React.FC = () => {
   const [state, setState] = useState<SimulationState | null>(null);
   const [autoDemo, setAutoDemo] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-  const [mode, setMode] = useState<'demo' | 'real'>('demo');
-  const [quantumMode, setQuantumMode] = useState(true);
-  const [viewMode, setViewMode] = useState<'swap' | 'comparison' | 'diagnostics'>('swap');
-  const [quantumStatus, setQuantumStatus] = useState<{ initialized: boolean }>({ initialized: false });
-  const [comparisonData, setComparisonData] = useState({
-    data: [] as any[],
-    signalData: {
-      coherence: [] as number[],
-      entropy: [] as number[],
-      fieldState: [] as string[],
-    },
-    anomalies: [] as any[],
-  });
+  // const [mode, setMode] = useState<'demo' | 'real'>('demo');
+  // const [quantumMode, setQuantumMode] = useState(true);
+  // const [viewMode, setViewMode] = useState<'swap' | 'comparison' | 'diagnostics'>('swap');
+  // const [quantumStatus, setQuantumStatus] = useState<{ initialized: boolean }>({ initialized: false });
+  // const [comparisonData, setComparisonData] = useState({
+  //   data: [] as any[],
+  //   signalData: {
+  //     coherence: [] as number[],
+  //     entropy: [] as number[],
+  //     fieldState: [] as string[],
+  //   },
+  //   anomalies: [] as any[],
+  // });
 
   // Check quantum adapter status on mount
-  useEffect(() => {
-    if (window.quantum) {
-      window.quantum.getStatus().then(status => {
-        setQuantumStatus(status);
-      });
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (window.quantum) {
+  //     window.quantum.getStatus().then(status => {
+  //       setQuantumStatus(status);
+  //     });
+  //   }
+  // }, []);
   // Initialize simulation on mount
   useEffect(() => {
     initializeSimulation();
@@ -60,7 +89,7 @@ export const App: React.FC = () => {
     try {
       const response = await window.ncf.runSimulation({ nodes: 5, edges: 10 });
       if (response.success && response.state) {
-        setState(response.state as SimulationState);
+        setState(normalizeState(response.state as SimulationState));
       }
     } catch (error) {
       console.error('Failed to initialize simulation:', error);
@@ -74,7 +103,7 @@ export const App: React.FC = () => {
         // Get updated state
         const stateResponse = await window.ncf.getState();
         if (stateResponse.success && stateResponse.state) {
-          setState(stateResponse.state as SimulationState);
+          setState(normalizeState(stateResponse.state as SimulationState));
         }
       }
     } catch (error) {
@@ -92,7 +121,7 @@ export const App: React.FC = () => {
       
       const response = await window.ncf.reset({ nodes: 5, edges: 10 });
       if (response.success && response.state) {
-        setState(response.state as SimulationState);
+        setState(normalizeState(response.state as SimulationState));
       }
     } catch (error) {
       console.error('Failed to reset simulation:', error);

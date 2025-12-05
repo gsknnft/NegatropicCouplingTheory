@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import path from 'node:path';
-import log from 'electron-log';
+import log from 'electron-log/main';
 import { autoUpdater } from 'electron-updater';
 import sourceMapSupport from 'source-map-support';
 import {
@@ -39,10 +39,10 @@ async function createWindow() {
 
   const url = dev
     ? 'http://localhost:5173'
-    : `file://${path.join(__dirname, '../app/dist/main/index.html')}`;
+    : `file://${path.join(__dirname, '../app/dist/renderer/index.html')}`;
 
   await mainWindow.loadURL(url);
-
+  mainWindow.webContents.reloadIgnoringCache();
   mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.on('closed', () => (mainWindow = null));
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -55,7 +55,9 @@ async function createWindow() {
 
 class AppUpdater {
   constructor() {
-    log.transports.file.level = 'info';
+    if (log.transports?.file) {
+      log.transports.file.level = 'info';
+    }
     autoUpdater.logger = log;
     autoUpdater.checkForUpdatesAndNotify();
   }
