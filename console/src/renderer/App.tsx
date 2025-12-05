@@ -38,6 +38,9 @@ const normalizeState = (raw: SimulationState): SimulationState => {
 
 export const App: React.FC = () => {
   const [state, setState] = useState<SimulationState | null>(null);
+  const [scenarioMeta, setScenarioMeta] = useState<SimulationState['scenarioMetadata'] | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>('Ready');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scenarioPath, setScenarioPath] = useState<string>('examples/entropy_mesh_example.json');
   const [availableScenarios, setAvailableScenarios] = useState([
     { label: 'Entropy Mesh Example', value: 'examples/entropy_mesh_example.json' },
@@ -49,13 +52,38 @@ export const App: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const virtualPath = `uploads/${file.name}`;
-      setAvailableScenarios(prev => [
-        ...prev,
-        { label: `Uploaded: ${file.name}`, value: virtualPath }
-      ]);
-      setScenarioPath(virtualPath);
-      // TODO: send file to backend for processing
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const data = reader.result;
+          if (!data || typeof data === 'string') {
+            throw new Error('Unable to read uploaded scenario');
+          }
+          const uploadResult = await window.ncf.uploadScenario({
+            name: file.name,
+            type: file.type,
+            data: data as ArrayBuffer,
+            saveToFile: true,
+          });
+          if (!uploadResult.success) {
+            setErrorMessage(uploadResult.error ?? 'Scenario upload failed');
+            setStatusMessage('Scenario upload failed');
+            return;
+          }
+          const virtualPath = `uploads/${file.name}`;
+          setAvailableScenarios(prev => [
+            ...prev,
+            { label: `Uploaded: ${file.name}`, value: virtualPath }
+          ]);
+          setScenarioPath(virtualPath);
+          setStatusMessage('Scenario uploaded');
+        } catch (err) {
+          console.error('Scenario upload failed:', err);
+          setErrorMessage(err instanceof Error ? err.message : 'Scenario upload failed');
+          setStatusMessage('Scenario upload failed');
+        }
+      };
+      reader.readAsArrayBuffer(file);
     }
   };
   const [autoDemo, setAutoDemo] = useState(false);
@@ -106,14 +134,34 @@ export const App: React.FC = () => {
     };
   }, [autoDemo, intervalId]);
 
+  const applySimulationState = (nextState: SimulationState) => {
+    const normalized = normalizeState(nextState);
+    setState(normalized);
+    setScenarioMeta(normalized.scenarioMetadata ?? null);
+    setErrorMessage(null);
+    setStatusMessage('Simulation ready');
+  };
+
   const initializeSimulation = async () => {
+    setStatusMessage('Loading scenario...');
+    setErrorMessage(null);
+    setScenarioMeta(null);
     try {
       const response = await window.ncf.runSimulation({ nodes: 5, edges: 10, scenarioPath });
       if (response.success && response.state) {
-        setState(normalizeState(response.state as SimulationState));
+        applySimulationState(response.state as SimulationState);
+      } else {
+        setState(null);
+        setScenarioMeta(null);
+        setStatusMessage('Scenario load failed');
+        setErrorMessage(response.error ?? 'Unknown scenario load error');
       }
     } catch (error) {
       console.error('Failed to initialize simulation:', error);
+      setState(null);
+      setScenarioMeta(null);
+      setStatusMessage('Scenario load failed');
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -124,11 +172,19 @@ export const App: React.FC = () => {
         // Get updated state
         const stateResponse = await window.ncf.getState();
         if (stateResponse.success && stateResponse.state) {
-          setState(normalizeState(stateResponse.state as SimulationState));
+          applySimulationState(stateResponse.state as SimulationState);
+        } else {
+          setStatusMessage('Step failed');
+          setErrorMessage(stateResponse.error ?? 'Unable to fetch updated state');
         }
+      } else {
+        setStatusMessage('Step failed');
+        setErrorMessage(response.error ?? 'Unknown step error');
       }
     } catch (error) {
       console.error('Failed to step simulation:', error);
+      setStatusMessage('Step failed');
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -141,10 +197,15 @@ export const App: React.FC = () => {
       }
       const response = await window.ncf.reset({ nodes: 5, edges: 10, scenarioPath });
       if (response.success && response.state) {
-        setState(normalizeState(response.state as SimulationState));
+        applySimulationState(response.state as SimulationState);
+      } else {
+        setStatusMessage('Reset failed');
+        setErrorMessage(response.error ?? 'Unknown reset error');
       }
     } catch (error) {
       console.error('Failed to reset simulation:', error);
+      setStatusMessage('Reset failed');
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -158,6 +219,55 @@ export const App: React.FC = () => {
         <h1>🧩 Negentropic Console</h1>
         <p className="subtitle">Real-time Visualization of the Negentropic Coupling Framework</p>
       </header>
+
+      {scenarioMeta && (
+        <div className="scenario-metadata">
+          <div className="meta-header">
+            <div>
+              <div className="meta-title">{scenarioMeta.name ?? 'Scenario'}</div>
+              {scenarioMeta.description && (
+                <div className="meta-description">{scenarioMeta.description}</div>
+              )}
+            </div>
+            <div className="meta-source">
+              {scenarioMeta.format && <span className="pill">Format: {scenarioMeta.format}</span>}
+              {scenarioMeta.sourcePath && <span className="pill">Source: {scenarioMeta.sourcePath}</span>}
+            </div>
+          </div>
+          <div className="meta-grid">
+            {scenarioMeta.author && (
+              <div className="meta-item">
+                <div className="meta-label">Author</div>
+                <div className="meta-value">{scenarioMeta.author}</div>
+              </div>
+            )}
+            {scenarioMeta.version && (
+              <div className="meta-item">
+                <div className="meta-label">Version</div>
+                <div className="meta-value">{scenarioMeta.version}</div>
+              </div>
+            )}
+            {scenarioMeta.date && (
+              <div className="meta-item">
+                <div className="meta-label">Date</div>
+                <div className="meta-value">{scenarioMeta.date}</div>
+              </div>
+            )}
+          </div>
+          {scenarioMeta.parameters && (
+            <div className="meta-parameters">
+              <div className="meta-label">Parameters</div>
+              <div className="meta-parameter-list">
+                {Object.entries(scenarioMeta.parameters).map(([key, value]) => (
+                  <span key={key} className="pill">
+                    {key}: {String(value)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="controls">
         <select
@@ -193,6 +303,10 @@ export const App: React.FC = () => {
             </>
           )}
         </div>
+      </div>
+      <div className="status-row">
+        <span className="status-message">{statusMessage}</span>
+        {errorMessage && <span className="status-error">{errorMessage}</span>}
       </div>
       <div className="panel panel-large">
         <h2>Classical vs Negentropic</h2>
@@ -236,3 +350,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+

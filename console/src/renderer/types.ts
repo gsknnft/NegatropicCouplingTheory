@@ -47,6 +47,17 @@ export interface EdgeMetrics {
   policy: 'macro' | 'defensive' | 'balanced';
 }
 
+export interface ScenarioMetadata {
+  name?: string;
+  description?: string;
+  author?: string;
+  version?: string;
+  date?: string;
+  parameters?: Record<string, unknown>;
+  sourcePath?: string;
+  format?: string;
+}
+
 export interface SimulationState {
   nodes: number;
   edges: Edge[];
@@ -54,6 +65,7 @@ export interface SimulationState {
   meshMetrics: SimulationMetrics;
   edgeMetrics: Map<string, EdgeMetrics>;
   history: SimulationMetrics[];
+  scenarioMetadata?: ScenarioMetadata;
   anomalies?: AnomalyDetection[];
 }
 
@@ -79,6 +91,7 @@ declare global {
       step: () => Promise<NCFResponse<SimulationMetrics>>;
       getState: () => Promise<NCFResponse<SimulationState>>;
       reset: (params: NCFParams) => Promise<NCFResponse<SimulationState>>;
+      uploadScenario: (payload: { name: string; type: string; data: ArrayBuffer; saveToFile?: boolean }) => Promise<NCFResponse<{ path?: string; name?: string }>>;
     } & NCFDiagnostics;
     quantum: {
       platform: string;

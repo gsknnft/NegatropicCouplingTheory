@@ -72,6 +72,103 @@ body {
   flex-wrap: wrap;
 }
 
+.scenario-metadata {
+  margin: 20px 0;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.meta-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.meta-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.meta-description {
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.meta-source {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.meta-item {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.meta-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.meta-value {
+  font-weight: 600;
+}
+
+.meta-parameters {
+  margin-top: 8px;
+}
+
+.meta-parameter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.status-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: -10px 0 20px;
+  padding: 0 2px;
+}
+
+.status-message {
+  color: var(--text-secondary);
+}
+
+.status-error {
+  color: var(--accent-defensive);
+  font-weight: 600;
+}
+
 button {
   padding: 10px 20px;
   font-size: 1rem;

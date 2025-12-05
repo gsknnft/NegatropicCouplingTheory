@@ -9,9 +9,8 @@ import {
   REACT_DEVELOPER_TOOLS,
 } from 'electron-devtools-installer';
 import { ncfService, NCFParams, NCFResponse } from './services/ncfService';
+import { uploadedScenarios } from './uploadStore';
 
-// In-memory scenario store
-const uploadedScenarios = new Map<string, { buffer: Buffer; type: string; saveToFile: boolean }>();
 ipcMain.handle('ncf:uploadScenario', async (_event, { name, type, data, saveToFile }) => {
   try {
     const buffer = Buffer.from(data);

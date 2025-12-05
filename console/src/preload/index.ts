@@ -20,6 +20,7 @@ export type Channels =
   | 'ncf:step'
   | 'ncf:state'
   | 'ncf:reset'
+  | 'ncf:uploadScenario'
   | 'ping';
 
 // Expose protected methods that allow the renderer process to use
@@ -53,6 +54,8 @@ contextBridge.exposeInMainWorld('ncf', {
 
   reset: (params: NCFParams) =>
     ipcRenderer.invoke('ncf:reset', params) as Promise<NCFResponse>,
+  uploadScenario: (payload: { name: string; type: string; data: ArrayBuffer; saveToFile?: boolean }) =>
+    ipcRenderer.invoke('ncf:uploadScenario', payload) as Promise<NCFResponse>,
 });
 
 console.log('Preload script loaded with secure context isolation');
