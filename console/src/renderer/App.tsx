@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { SimulationState, SimulationMetrics } from './types';
+import React, { useState, useEffect } from 'react';
+import { SimulationState } from './types';
 import { EntropyField } from './components/EntropyField';
 import { NegentropyGauge } from './components/NegentropyGauge';
 import { CouplingMap } from './components/CouplingMap';
@@ -8,7 +8,6 @@ import './styles/theme.css';
 
 export const App: React.FC = () => {
   const [state, setState] = useState<SimulationState | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
   const [autoDemo, setAutoDemo] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
 
@@ -24,11 +23,9 @@ export const App: React.FC = () => {
         stepSimulation();
       }, 100);
       setIntervalId(id);
-      setIsRunning(true);
     } else if (!autoDemo && intervalId) {
       clearInterval(intervalId);
       setIntervalId(null);
-      setIsRunning(false);
     }
     
     return () => {
@@ -71,7 +68,6 @@ export const App: React.FC = () => {
         clearInterval(intervalId);
         setIntervalId(null);
       }
-      setIsRunning(false);
       
       const response = await window.ncf.reset({ nodes: 5, edges: 10 });
       if (response.success && response.state) {

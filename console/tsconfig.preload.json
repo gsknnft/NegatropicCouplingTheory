@@ -4,11 +4,10 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "noEmit": false,
-    "outDir": "dist/main",
+    "outDir": "dist/preload",
     "lib": ["ES2020"],
-    "jsx": "preserve",
     "allowImportingTsExtensions": false
   },
-  "include": ["src/main/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/renderer", "src/preload"]
+  "include": ["src/preload/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/renderer", "src/main"]
 }

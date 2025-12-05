@@ -9,7 +9,7 @@
     "dev": "vite",
     "dev:console": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:dev": "wait-on http://localhost:5173 && electron .",
-    "build": "tsc && vite build && tsc -p tsconfig.main.json",
+    "build": "tsc && vite build && tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
     "build:console": "npm run build && electron-builder",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",

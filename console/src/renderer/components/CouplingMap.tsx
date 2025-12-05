@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
-import { SimulationState, Edge } from '../types';
+import { SimulationState } from '../types';
 
 interface CouplingMapProps {
   state: SimulationState;

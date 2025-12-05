@@ -112,10 +112,9 @@ export class NCFSimulation {
     return 1.0 - h / hMax;
   }
 
-  private entropyVelocity(edge: Edge): number {
+  private entropyVelocity(_edge: Edge): number {
     if (this.history.length < 2) return 0.0;
 
-    const key = this.edgeKey(edge);
     // For velocity, we compute change in entropy for this specific edge
     // Simplified: use mesh-level velocity as approximation
     return this.history[this.history.length - 1].velocity;

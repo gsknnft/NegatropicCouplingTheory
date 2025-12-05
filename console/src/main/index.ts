@@ -35,7 +35,7 @@ function createWindow(): void {
 // IPC Handlers for NCF simulation
 ipcMain.handle('ncf:run', async (_event, params) => {
   try {
-    const { steps = 100, mode = 'macro', nodes = 5, edges = 10 } = params || {};
+    const { nodes = 5, edges = 10 } = params || {};
     
     if (!simulation) {
       simulation = new NCFSimulation(nodes, edges);
