@@ -1,3 +1,33 @@
-// Electron rebuild script stub
-// This would normally rebuild native modules for Electron
-console.log('Electron rebuild skipped - no native modules to rebuild');
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+const workspaceRoot = path.resolve(__dirname, '..');
+const electronDir = path.resolve(workspaceRoot, 'app');
+
+if (!fs.existsSync(electronDir)) {
+  console.log('ℹ️ Electron app directory not found, skipping rebuild.');
+  process.exit(0);
+}
+
+if (process.env.ELECTRON_REBUILD_RUNNING === '1') {
+  console.log('⚠️ Skipping recursive electron-rebuild (already running)');
+  process.exit(0);
+}
+
+process.env.ELECTRON_REBUILD_RUNNING = '1';
+
+try {
+  console.log('🔧 Rebuilding native modules for Electron (pnpm-isolated)...');
+  execSync(
+    `pnpm exec electron-rebuild --module-dir "${electronDir}" --force --types prod,dev,optional`,
+    {
+      cwd: workspaceRoot,
+      stdio: 'inherit',
+      env: { ...process.env, ELECTRON_REBUILD_RUNNING: '1' },
+    },
+  );
+  console.log('✅ Electron rebuild complete.');
+} catch (err) {
+  console.error('❌ Electron rebuild failed:', err);
+  process.exit(1);
+}

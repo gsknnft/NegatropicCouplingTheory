@@ -1,0 +1,13 @@
+packages:
+  - console/**
+  - sdk/**
+
+onlyBuiltDependencies:
+  - '@gsknnft/qwormhole'
+  - '@serialport/bindings-cpp'
+  - core-js
+  - core-js-pure
+  - electron
+  - esbuild
+  - protobufjs
+  - unrs-resolver

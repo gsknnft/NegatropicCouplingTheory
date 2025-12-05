@@ -1,108 +1,69 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
-import * as path from 'path';
-import { NCFSimulation } from './simulation';
+import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import path from 'node:path';
+import log from 'electron-log';
+import { autoUpdater } from 'electron-updater';
+import sourceMapSupport from 'source-map-support';
+import {
+  default as electronDevtoolsInstaller,
+  REACT_DEVELOPER_TOOLS,
+} from 'electron-devtools-installer';
 
 let mainWindow: BrowserWindow | null = null;
-let simulation: NCFSimulation | null = null;
 
-function createWindow(): void {
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-    title: 'Negentropic Console - Quantum Electron',
-    backgroundColor: '#0a0a0a',
-  });
-
-  // Load the app
-  if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-  }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
+if (process.env.NODE_ENV === 'production') {
+  sourceMapSupport.install();
 }
 
-// IPC Handlers for NCF simulation
-ipcMain.handle('ncf:run', async (_event, params) => {
-  try {
-    const { nodes = 5, edges = 10 } = params || {};
-    
-    if (!simulation) {
-      simulation = new NCFSimulation(nodes, edges);
-    }
-    
-    // Run simulation and return initial state
-    const state = simulation.getState();
-    return { success: true, state };
-  } catch (error) {
-    console.error('NCF simulation error:', error);
-    return { success: false, error: String(error) };
-  }
-});
+async function installExtensions() {
+  const forceDownload = !!process.env.UPGRADE_EXTENSIONS;
+  await electronDevtoolsInstaller([REACT_DEVELOPER_TOOLS], { forceDownload });
+}
 
-ipcMain.handle('ncf:step', async () => {
-  try {
-    if (!simulation) {
-      simulation = new NCFSimulation(5, 10);
-    }
-    
-    const metrics = simulation.evolve();
-    return { success: true, metrics };
-  } catch (error) {
-    console.error('NCF step error:', error);
-    return { success: false, error: String(error) };
-  }
-});
+async function createWindow() {
+  const dev = true;// !app.isPackaged;
 
-ipcMain.handle('ncf:state', async () => {
-  try {
-    if (!simulation) {
-      simulation = new NCFSimulation(5, 10);
-    }
-    
-    const state = simulation.getState();
-    return { success: true, state };
-  } catch (error) {
-    console.error('NCF state error:', error);
-    return { success: false, error: String(error) };
-  }
-});
+  if (dev) await installExtensions();
 
-ipcMain.handle('ncf:reset', async (_event, params) => {
-  try {
-    const { nodes = 5, edges = 10 } = params || {};
-    simulation = new NCFSimulation(nodes, edges);
-    const state = simulation.getState();
-    return { success: true, state };
-  } catch (error) {
-    console.error('NCF reset error:', error);
-    return { success: false, error: String(error) };
-  }
-});
-
-// App lifecycle
-app.whenReady().then(() => {
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+  mainWindow = new BrowserWindow({
+    show: false,
+    width: 1024,
+    height: 728,
+    icon: path.join(process.cwd(), 'assets/icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/index'),
+      contextIsolation: true,
+      sandbox: false,
+    },
   });
-});
+
+  const url = dev
+    ? 'http://localhost:5173'
+    : `file://${path.join(__dirname, '../app/dist/main/index.html')}`;
+
+  await mainWindow.loadURL(url);
+
+  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.on('closed', () => (mainWindow = null));
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  new AppUpdater();
+}
+
+class AppUpdater {
+  constructor() {
+    log.transports.file.level = 'info';
+    autoUpdater.logger = log;
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+}
+
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
+
+ipcMain.handle('ping', () => 'pong');

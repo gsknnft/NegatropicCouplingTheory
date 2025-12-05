@@ -1,3 +1,12 @@
-// Link modules script stub
-// This would normally handle module linking for monorepo setups
-console.log('Module linking skipped - standalone package');
+import fs from 'fs';
+
+import paths from './paths';
+
+const { srcNodeModulesPath, appNodeModulesPath } =
+  paths;
+
+if (fs.existsSync(appNodeModulesPath)) {
+  if (!fs.existsSync(srcNodeModulesPath)) {
+    fs.symlinkSync(appNodeModulesPath, srcNodeModulesPath, 'junction');
+  }
+}
