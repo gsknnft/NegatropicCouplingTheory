@@ -35,7 +35,20 @@ NCF powers **SigilNet**, **QWormhole**, and related architectures — turning *e
 ✅ **Mathematically grounded** — normalized, bounded, and computable  
 ✅ **Runtime-mappable** — directly corresponds to SigilNet's FlowController + Policy layer  
 ✅ **Simulation-ready** — Wolfram & Python models included  
-✅ **Novel** — defines a new negentropic control law linking information theory and network transport  
+✅ **Visual console** — Real-time Electron-based visualization with secure context isolation  
+✅ **Novel** — defines a new negentropic control law linking information theory and network transport
+
+### 🖥️ Negentropic Console
+
+The **Electron Console** provides real-time visualization of NCF dynamics:
+
+- **Live negentropy & entropy graphs** showing mesh evolution
+- **Force-directed coupling map** with color-coded policy states
+- **Interactive controls** for simulation parameters
+- **Auto-demo mode** for presentations
+- **Secure architecture** with context isolation and sandboxing
+
+Launch with `npm run dev:console` in the `console/` directory. See [CONSOLE.md](CONSOLE.md) for details.  
 
 ---
 
@@ -50,6 +63,22 @@ pip install -r requirements.txt
 ### Wolfram Language
 
 Requires Wolfram Language/Mathematica (version 12.0 or later).
+
+---
+
+## Quick Start (Electron Console)
+
+Launch the interactive visualization console:
+
+```bash
+cd console
+npm install
+npm run dev:console
+```
+
+Runs at `http://localhost:5173` in a secure Electron shell.
+
+See [CONSOLE.md](CONSOLE.md) for detailed usage.
 
 ---
 
