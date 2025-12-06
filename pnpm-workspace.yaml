@@ -1,6 +1,6 @@
 packages:
   - console/**
-  - sdk/**
+  - packages/**
 
 
 

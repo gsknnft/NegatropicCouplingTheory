@@ -1,0 +1,1 @@
+{"version":3,"file":"types.js","sourceRoot":"","sources":["../../../src/types/types.ts"],"names":[],"mappings":"","sourcesContent":["// types.ts\nexport type Complex = [number, number];\nexport type Phasors = Complex[];\n\n\n"]}

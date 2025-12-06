@@ -1,3 +1,4 @@
+
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import path from 'node:path';
 import log from 'electron-log/main';
@@ -8,34 +9,26 @@ import {
   REACT_DEVELOPER_TOOLS,
 } from 'electron-devtools-installer';
 import { ncfService, NCFParams, NCFResponse } from './services/ncfService';
-import {
-  persistScenarioUpload,
-  registerScenarioUpload,
-} from './uploadStore';
+import fs from 'node:fs';
 
+// In-memory scenario store
+const uploadedScenarios = new Map<
+  string,
+  { buffer: Buffer; type: string; saveToFile: boolean }
+>();
 ipcMain.handle(
   'ncf:uploadScenario',
   async (_event, { name, type, data, saveToFile }) => {
     try {
       const buffer = Buffer.from(data);
-      const record = registerScenarioUpload(
-        name,
-        buffer,
-        type,
-        Boolean(saveToFile),
-      );
-      if (record.saveToFile) {
-        await persistScenarioUpload(record);
+      uploadedScenarios.set(name, { buffer, type, saveToFile });
+      if (saveToFile) {
+        const dest = path.resolve(process.cwd(), 'uploads', name);
+        await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+        await fs.promises.writeFile(dest, buffer);
+        return { success: true, path: dest };
       }
-      return {
-        success: true,
-        state: {
-          path: record.virtualPath,
-          checksum: record.checksum,
-          size: record.size,
-          name: record.originalName,
-        },
-      };
+      return { success: true, name };
     } catch (error) {
       return {
         success: false,
@@ -61,14 +54,13 @@ async function createWindow() {
 
   if (dev) await installExtensions();
 
-    console.log('Creating main window...');
-    mainWindow = new BrowserWindow({
-      show: true, // Force window to show immediately for debugging
+  mainWindow = new BrowserWindow({
+    show: false,
     width: 1024,
     height: 728,
-    icon: path.join(__dirname, 'assets/icon.png'),
+    icon: path.join(process.cwd(), 'assets/icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index'),
       contextIsolation: true,
       sandbox: false,
     },
@@ -79,13 +71,8 @@ async function createWindow() {
     : `file://${path.join(__dirname, '../app/dist/renderer/index.html')}`;
 
   await mainWindow.loadURL(url);
-  
   mainWindow.webContents.reloadIgnoringCache();
-  console.log('Main window created, attempting to show...');
-  mainWindow.once('ready-to-show', () => {
-    console.log('ready-to-show event fired, showing window');
-    mainWindow?.show();
-  });
+  mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.on('closed', () => (mainWindow = null));
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -105,10 +92,7 @@ class AppUpdater {
   }
 }
 
-app.whenReady().then(() => {
-  console.log('Electron app is ready, calling createWindow');
-  createWindow();
-});
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

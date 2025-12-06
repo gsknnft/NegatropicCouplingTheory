@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist/types",
+    "skipLibCheck": true,
+    "removeComments": true,
+    "declaration": true,
+    "strictNullChecks": false
+  },
+  "include": ["src"]
+}

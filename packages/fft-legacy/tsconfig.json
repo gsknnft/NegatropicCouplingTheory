@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "rootDir": "src",
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "declaration": true,
+    "composite": true,
+    "skipLibCheck": true,
+    "typeRoots": [
+      "../../src/types",
+      "../../node_modules/@types",
+      "node_modules/@types"
+    ]
+  },
+  "include": ["src"],
+}
