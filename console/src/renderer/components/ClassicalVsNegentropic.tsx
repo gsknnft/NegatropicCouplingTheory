@@ -58,6 +58,23 @@ export const ClassicalVsNegentropic: React.FC<ClassicalVsNegentropicProps> = ({
     if (data.length === 0) return;
 
     // Draw typical data flows
+    // Draw axis
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(40, 0);
+    ctx.lineTo(40, canvas.height);
+    ctx.moveTo(0, canvas.height - 40);
+    ctx.lineTo(canvas.width, canvas.height - 40);
+    ctx.stroke();
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Throughput', 45, 15);
+    ctx.save();
+    ctx.translate(10, canvas.height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Time', 0, 0);
+    ctx.restore();
     const throughputs = data.map(d => d.throughput);
     const maxThroughput = Math.max(...throughputs);
     const minThroughput = Math.min(...throughputs);
@@ -122,19 +139,25 @@ export const ClassicalVsNegentropic: React.FC<ClassicalVsNegentropicProps> = ({
     const dataLength = signalData.coherence.length;
     const barWidth = width / dataLength;
 
-    // Draw coherence field
-    ctx.fillStyle = 'rgba(0, 255, 65, 0.1)';
-    ctx.fillRect(0, 0, width, height);
+
+    // Draw axis
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(40, 0);
+    ctx.lineTo(40, height);
+    ctx.moveTo(0, height - 40);
+    ctx.lineTo(width, height - 40);
+    ctx.stroke();
 
     // Draw coherence wave
     ctx.strokeStyle = '#00ff41';
     ctx.lineWidth = 3;
     ctx.beginPath();
     for (let i = 0; i < dataLength; i++) {
-      const x = i * barWidth;
+      const x = 40 + i * ((width - 40) / dataLength);
       const coherence = signalData.coherence[i];
-      const y = height - (coherence * height * 0.8) - 40;
-      
+      const y = height - 40 - (coherence * (height - 80));
       if (i === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -148,10 +171,9 @@ export const ClassicalVsNegentropic: React.FC<ClassicalVsNegentropicProps> = ({
     ctx.lineWidth = 2;
     ctx.beginPath();
     for (let i = 0; i < dataLength; i++) {
-      const x = i * barWidth;
+      const x = 40 + i * ((width - 40) / dataLength);
       const negentropy = signalData.negentropy[i];
-      const y = height - (negentropy * height * 0.8) - 40;
-      
+      const y = height - 40 - (negentropy * (height - 80));
       if (i === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -159,6 +181,13 @@ export const ClassicalVsNegentropic: React.FC<ClassicalVsNegentropicProps> = ({
       }
     }
     ctx.stroke();
+
+    // Add legend
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#00ff41';
+    ctx.fillText('Coherence', width - 120, 30);
+    ctx.fillStyle = '#ff00ff';
+    ctx.fillText('Negentropy', width - 120, 50);
 
     // Draw field state indicators
     for (let i = 0; i < dataLength; i++) {

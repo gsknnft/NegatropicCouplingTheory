@@ -3,7 +3,8 @@ Negentropic Coupling Framework - Python Simulation Module
 Author: gsknnft (SigilNet Core Research)
 Version: 1.0
 """
-
+import sys
+print(sys.path)
 import numpy as np
 from typing import List, Tuple, Dict, Optional
 import json
@@ -213,9 +214,9 @@ class NCFSimulation:
         self.time += 1
         
         return {
-            'negentropy': avg_negentropy,
-            'coherence': avg_coherence,
-            'velocity': avg_velocity
+            'negentropy': float(avg_negentropy),
+            'coherence': float(avg_coherence),
+            'velocity': float(avg_velocity)
         }
     
     def get_history(self) -> List[Dict]:

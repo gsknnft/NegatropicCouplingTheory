@@ -21,7 +21,7 @@ export default defineConfig({
       ],
       
       output: {
-        format: 'esm', // ✅ Pure ESM
+        format: 'cjs', // ✅ Pure ESM
         entryFileNames: 'index.js',
       },
     },

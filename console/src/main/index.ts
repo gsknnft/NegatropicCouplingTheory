@@ -61,13 +61,14 @@ async function createWindow() {
 
   if (dev) await installExtensions();
 
-  mainWindow = new BrowserWindow({
-    show: false,
+    console.log('Creating main window...');
+    mainWindow = new BrowserWindow({
+      show: true, // Force window to show immediately for debugging
     width: 1024,
     height: 728,
-    icon: path.join(process.cwd(), 'assets/icon.png'),
+    icon: path.join(__dirname, 'assets/icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index'),
+      preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       sandbox: false,
     },
@@ -78,8 +79,13 @@ async function createWindow() {
     : `file://${path.join(__dirname, '../app/dist/renderer/index.html')}`;
 
   await mainWindow.loadURL(url);
+  
   mainWindow.webContents.reloadIgnoringCache();
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  console.log('Main window created, attempting to show...');
+  mainWindow.once('ready-to-show', () => {
+    console.log('ready-to-show event fired, showing window');
+    mainWindow?.show();
+  });
   mainWindow.on('closed', () => (mainWindow = null));
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -99,7 +105,10 @@ class AppUpdater {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  console.log('Electron app is ready, calling createWindow');
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

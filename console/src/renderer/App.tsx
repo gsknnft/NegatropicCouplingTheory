@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { SimulationState, EdgeMetrics } from './types';
+import { ZodError } from 'zod';
+import {
+  SimulationState,
+  EdgeMetrics,
+  SimulationStatePayload,
+} from './types';
 import { EntropyField } from './components/EntropyField';
 import { NegentropyGauge } from './components/NegentropyGauge';
 import { CouplingMap } from './components/CouplingMap';
 import { PolicyConsole } from './components/PolicyConsole';
 import './styles/theme.css';
 import { ClassicalVsNegentropic } from './components/ClassicalVsNegentropic';
+import { SimulationStateSchema } from '../shared/schemas';
+import { ScenarioDiagnostics } from './components/ScenarioDiagnostics';
 
 type EdgeMetricPayload =
   | Map<string, EdgeMetrics>
@@ -14,8 +21,8 @@ type EdgeMetricPayload =
   | undefined
   | null;
 
-const normalizeState = (raw: SimulationState): SimulationState => {
-  const maybeEdgeMetrics = (raw as SimulationState & {
+const normalizeState = (raw: SimulationStatePayload): SimulationState => {
+  const maybeEdgeMetrics = (raw as SimulationStatePayload & {
     edgeMetrics: EdgeMetricPayload;
   }).edgeMetrics;
 
@@ -45,6 +52,15 @@ const formatBytes = (value?: number): string | null => {
   return `${(value / (1024 * 1024)).toFixed(2)} MB`;
 };
 
+const formatZodIssues = (error: ZodError): string => {
+  return error.issues
+    .map(issue => {
+      const path = issue.path.join('.') || 'root';
+      return `${path}: ${issue.message}`;
+    })
+    .join('; ');
+};
+
 type StatusLevel = 'info' | 'success' | 'error';
 
 export const App: React.FC = () => {
@@ -55,12 +71,12 @@ export const App: React.FC = () => {
     { message: 'Ready', level: 'info' },
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [scenarioPath, setScenarioPath] = useState<string>('examples/entropy_mesh_example.json');
+  const [scenarioPath, setScenarioPath] = useState<string>('../examples/entropy_mesh_example.json');
   const [availableScenarios, setAvailableScenarios] = useState([
-    { label: 'Entropy Mesh Example', value: 'examples/entropy_mesh_example.json' },
-    { label: 'NCF Python Model', value: 'models/NCF_simulation.py' },
-    { label: 'NCF Wolfram Model', value: 'models/NCF_simulation.wl' },
-    { label: 'Run Simulation Notebook', value: 'examples/run_simulation.ipynb' },
+    { label: 'Entropy Mesh Example', value: '../examples/entropy_mesh_example.json' },
+    { label: 'NCF Python Model', value: '../models/NCF_simulation.py' },
+    { label: 'NCF Wolfram Model', value: '../models/NCF_simulation.wl' },
+    { label: 'Run Simulation Notebook', value: '../examples/run_simulation.ipynb' },
   ]);
   const updateStatus = (message: string, level: StatusLevel = 'info') =>
     setStatus({ message, level });
@@ -157,8 +173,14 @@ export const App: React.FC = () => {
     };
   }, [autoDemo, intervalId]);
 
-  const applySimulationState = (nextState: SimulationState) => {
-    const normalized = normalizeState(nextState);
+  const applySimulationState = (nextState: SimulationStatePayload) => {
+    const parsed = SimulationStateSchema.safeParse(nextState);
+    if (!parsed.success) {
+      updateStatus('Simulation data invalid', 'error');
+      setErrorMessage(formatZodIssues(parsed.error));
+      return;
+    }
+    const normalized = normalizeState(parsed.data);
     setState(normalized);
     setScenarioMeta(normalized.scenarioMetadata ?? null);
     setErrorMessage(null);
@@ -172,7 +194,7 @@ export const App: React.FC = () => {
     try {
       const response = await window.ncf.runSimulation({ nodes: 5, edges: 10, scenarioPath });
       if (response.success && response.state) {
-        applySimulationState(response.state as SimulationState);
+        applySimulationState(response.state as SimulationStatePayload);
       } else {
         setState(null);
         setScenarioMeta(null);
@@ -195,7 +217,7 @@ export const App: React.FC = () => {
         // Get updated state
         const stateResponse = await window.ncf.getState();
         if (stateResponse.success && stateResponse.state) {
-          applySimulationState(stateResponse.state as SimulationState);
+          applySimulationState(stateResponse.state as SimulationStatePayload);
         } else {
           updateStatus('Step failed', 'error');
           setErrorMessage(stateResponse.error ?? 'Unable to fetch updated state');
@@ -220,7 +242,7 @@ export const App: React.FC = () => {
       }
       const response = await window.ncf.reset({ nodes: 5, edges: 10, scenarioPath });
       if (response.success && response.state) {
-        applySimulationState(response.state as SimulationState);
+        applySimulationState(response.state as SimulationStatePayload);
       } else {
         updateStatus('Reset failed', 'error');
         setErrorMessage(response.error ?? 'Unknown reset error');
@@ -357,24 +379,7 @@ export const App: React.FC = () => {
           </span>
         )}
       </div>
-      <div className="panel panel-large">
-        <h2>Classical vs Negentropic</h2>
-        {state && (
-          <ClassicalVsNegentropic
-            data={state.history.map(h => ({
-              timestamp: h.time,
-              throughput: h.throughput ?? h.flowRate ?? h.velocity * 100,
-              entropy: h.entropy ?? (1 - h.negentropy),
-            }))}
-            signalData={{
-              coherence: state.history.map(h => h.coherence),
-              negentropy: state.history.map(h => h.negentropy),
-              fieldState: state.history.map(h => h.fieldState ?? 'balanced'),
-            }}
-            anomalies={state.anomalies ?? []}
-          />
-        )}
-      </div>
+
       <div className="dashboard">
         <div className="panel panel-large">
           <h2>Coupling Map</h2>
@@ -395,6 +400,40 @@ export const App: React.FC = () => {
           <h2>Policy Console</h2>
           {state && <PolicyConsole state={state} />}
         </div>
+
+        <div className="panel">
+          <h2>Scenario Diagnostics</h2>
+          <ScenarioDiagnostics metadata={scenarioMeta} />
+        </div>
+      </div>
+      <div className="panel">
+        <h2>Classical vs Negentropic</h2>
+        {state && (() => {
+          const coherenceArr = state.history.map(h => h.coherence);
+          const negentropyArr = state.history.map(h => h.negentropy);
+          if (
+            coherenceArr.length === negentropyArr.length &&
+            coherenceArr.every((v, i) => v === negentropyArr[i])
+          ) {
+            // eslint-disable-next-line no-console
+            console.warn('Coherence and negentropy arrays are identical!', coherenceArr);
+          }
+          return (
+            <ClassicalVsNegentropic
+              data={state.history.map(h => ({
+                timestamp: h.time,
+                throughput: h.throughput ?? h.flowRate ?? h.velocity * 100,
+                entropy: h.entropy ?? (1 - h.negentropy),
+              }))}
+              signalData={{
+                coherence: coherenceArr,
+                negentropy: negentropyArr,
+                fieldState: state.history.map(h => h.fieldState ?? 'balanced'),
+              }}
+              anomalies={state.anomalies ?? []}
+            />
+          );
+        })()}
       </div>
     </div>
   );

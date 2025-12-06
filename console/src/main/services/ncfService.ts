@@ -178,7 +178,12 @@ export class NCFService {
         return upload.buffer;
       }
     }
-    return fs.readFile(absolute);
+    try {
+      return await fs.readFile(absolute);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`Unable to read scenario (${absolute}): ${reason}`);
+    }
   }
 
   private async loadScenario(filePath: string): Promise<SimulationScenario> {
@@ -187,34 +192,35 @@ export class NCFService {
     const buffer = await this.readScenarioBuffer(filePath);
     const raw = buffer.toString();
 
-    if (ext === '.json') {
-      const parsed: ScenarioFile = JSON.parse(raw);
-      return this.buildScenarioFromParsed(parsed, filePath, 'json');
-    } else if (ext === '.py') {
-      // Run Python script and parse output
-      const result = execSync(`python`, { input: buffer, encoding: 'utf8' });
-      const parsed: ScenarioFile = JSON.parse(result);
-      return this.buildScenarioFromParsed(parsed, filePath, 'python');
-    } else if (ext === '.wl') {
-      // Run Wolfram script and parse output (stub)
-      // TODO: Integrate with Wolfram Engine or MathKernel
-      throw new Error('Wolfram scenario parsing not yet implemented');
-    } else if (ext === '.ipynb') {
-      // Parse notebook and extract scenario JSON
-      const parsed = JSON.parse(raw);
-      const cell = parsed.cells.find(
-        (c: any) =>
-          c.cell_type === 'code' &&
-          c.source.some((line: string) => line.includes('mesh')),
-      );
-      if (!cell) throw new Error('No scenario cell found in notebook');
-      const scenarioSource = cell.source.join('');
-      const scenarioJson = scenarioSource.match(/{[\s\S]*}/);
-      if (!scenarioJson) throw new Error('No scenario JSON found in cell');
-      const scenario = JSON.parse(scenarioJson[0]);
-      return this.buildScenarioFromParsed(scenario, filePath, 'notebook');
-    } else {
+    try {
+      if (ext === '.json') {
+        const parsed: ScenarioFile = JSON.parse(raw);
+        return this.buildScenarioFromParsed(parsed, filePath, 'json');
+      } else if (ext === '.py') {
+        // Run Python script and parse output
+        const result = execSync(`python`, { input: buffer, encoding: 'utf8' });
+        const parsed: ScenarioFile = JSON.parse(result);
+        return this.buildScenarioFromParsed(parsed, filePath, 'python');
+      } else if (ext === '.wl') {
+        throw new Error('Wolfram scenario parsing not yet implemented');
+      } else if (ext === '.ipynb') {
+        const parsed = JSON.parse(raw);
+        const cell = parsed.cells.find(
+          (c: any) =>
+            c.cell_type === 'code' &&
+            c.source.some((line: string) => line.includes('mesh')),
+        );
+        if (!cell) throw new Error('No scenario cell found in notebook');
+        const scenarioSource = cell.source.join('');
+        const scenarioJson = scenarioSource.match(/{[\s\S]*}/);
+        if (!scenarioJson) throw new Error('No scenario JSON found in cell');
+        const scenario = JSON.parse(scenarioJson[0]);
+        return this.buildScenarioFromParsed(scenario, filePath, 'notebook');
+      }
       throw new Error('Unsupported scenario file type');
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`Scenario parse failed (${filePath}): ${reason}`);
     }
   }
 

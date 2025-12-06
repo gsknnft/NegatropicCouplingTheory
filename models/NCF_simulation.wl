@@ -178,6 +178,26 @@ PlotNegentropyEvolution[] := Module[{data},
   ]
 ]
 
+(* After running RunSimulation[steps, mode], export scenario *)
+scenarioCore = <|
+  "mesh" -> <|"nodes" -> meshState["nodes"], "edges" -> meshState["edges"]|>,
+  "initial_state" -> <|
+    "probability_distributions" -> meshState["probabilities"]
+  |>
+|>;
+
+raw = ExportString[scenarioCore, "JSON"];
+metadata = <|
+  "checksum" -> Hash[raw, "SHA256"],
+  "size" -> StringLength[raw],
+  "timestamp" -> DateString[],
+  "source" -> "models/NCF_simulation.wl"
+|>;
+
+scenario = Join[scenarioCore, <|"metadata" -> metadata|>];
+Export["NCF_scenario_wolfram.json", scenario, "JSON"];
+Print["Scenario exported to NCF_scenario_wolfram.json"];
+
 End[]
 EndPackage[]
 

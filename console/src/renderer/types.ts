@@ -1,3 +1,21 @@
+import type {
+  ScenarioMetadata,
+  SimulationMetrics,
+  Edge,
+  EdgeMetrics,
+  SimulationStatePayload,
+  AnomalyDetection,
+} from '../shared/schemas';
+
+export type {
+  ScenarioMetadata,
+  SimulationMetrics,
+  Edge,
+  EdgeMetrics,
+  SimulationStatePayload,
+  AnomalyDetection,
+} from '../shared/schemas';
+
 export type NCFMode = 'macro' | 'defensive' | 'balanced';
 
 export interface SignalData {
@@ -12,54 +30,12 @@ export interface NCFDiagnostics {
   getHealth: () => Promise<NCFResponse<{ cpu: number; memory: number }>>;
 }
 
-
 export interface NCFParams {
   steps?: number;
   mode?: 'macro' | 'defensive' | 'balanced';
   nodes?: number;
   edges?: number;
   scenarioPath?: string;
-}
-
-export interface SimulationMetrics {
-  negentropy: number;
-  coherence: number;
-  velocity: number;
-  time: number;
-
-  /** Derived / optional metrics for visualization */
-  entropy?: number;        // H = 1 - N (or measured directly)
-  throughput?: number;     // Data rate through the system
-  flowRate?: number;       // Alias for throughput (compatibility)
-  fieldState?: 'macro' | 'balanced' | 'defensive';
-}
-
-export interface Edge {
-  source: number;
-  target: number;
-}
-
-export interface EdgeMetrics {
-  entropy: number;
-  negentropy: number;
-  coherence: number;
-  velocity: number;
-  policy: 'macro' | 'defensive' | 'balanced';
-}
-
-export interface ScenarioMetadata {
-  name?: string;
-  description?: string;
-  author?: string;
-  version?: string;
-  date?: string;
-  parameters?: Record<string, unknown>;
-  sourcePath?: string;
-  format?: string;
-  checksum?: string;
-  sizeBytes?: number;
-  uploadedAt?: string;
-  sourceName?: string;
 }
 
 export interface SimulationState {
@@ -73,14 +49,6 @@ export interface SimulationState {
   anomalies?: AnomalyDetection[];
 }
 
-export interface AnomalyDetection {
-  timestamp: number;
-  type: 'classical' | 'negentropic';
-  severity: 'low' | 'medium' | 'high';
-  description: string;
-}
-
-
 export interface NCFResponse<T = any> {
   success: boolean;
   state?: T;
@@ -91,10 +59,10 @@ export interface NCFResponse<T = any> {
 declare global {
   interface Window {
     ncf: {
-      runSimulation: (params: NCFParams) => Promise<NCFResponse<SimulationState>>;
+      runSimulation: (params: NCFParams) => Promise<NCFResponse<SimulationStatePayload>>;
       step: () => Promise<NCFResponse<SimulationMetrics>>;
-      getState: () => Promise<NCFResponse<SimulationState>>;
-      reset: (params: NCFParams) => Promise<NCFResponse<SimulationState>>;
+      getState: () => Promise<NCFResponse<SimulationStatePayload>>;
+      reset: (params: NCFParams) => Promise<NCFResponse<SimulationStatePayload>>;
       uploadScenario: (payload: { name: string; type: string; data: ArrayBuffer; saveToFile?: boolean }) => Promise<NCFResponse<{ path?: string; name?: string; checksum?: string; size?: number }>>;
     } & NCFDiagnostics;
     quantum: {
