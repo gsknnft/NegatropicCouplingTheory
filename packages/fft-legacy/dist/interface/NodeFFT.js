@@ -1,13 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NodeFFT = void 0;
-const fft_1 = __importDefault(require("@sigilnet/fft-ts/core/fft-base/fft"));
+const fft_1 = require("../fft");
 exports.NodeFFT = {
     forward(input) {
-        const processor = new fft_1.default(input);
+        const processor = new fft_1.FFT(input);
         const out = processor.createComplexArray();
         const inComplex = processor.createComplexArray();
         for (let i = 0; i < input.length; i++) {
@@ -26,7 +23,7 @@ exports.NodeFFT = {
     },
     inverse(real, imag) {
         const N = real;
-        const processor = new fft_1.default(N);
+        const processor = new fft_1.FFT(N);
         const inComplex = processor.createComplexArray();
         for (let i = 0; i < N.length; i++) {
             inComplex[2 * i] = real[i];

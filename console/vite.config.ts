@@ -1,6 +1,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import ts from "./tsconfig.json";
+
+const externalDeps = [
+  "fs", "path", "os", "http", "https", "stream", "zlib",
+  "events", "buffer", "util", "crypto", "child_process", "readline",
+  "@sigilnet/fft-legacy"
+  // keep only runtime externals here
+];
+
+const tsPaths =
+  ts.compilerOptions && "paths" in ts.compilerOptions && ts.compilerOptions.paths
+    ? Object.keys(ts.compilerOptions.paths).map(key => key.replace("/*", ""))
+    : [];
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,6 +27,12 @@ export default defineConfig({
   build: {
     outDir: 'dist/renderer',
     emptyOutDir: true,
+    rollupOptions: {
+    input: {
+      main: resolve(__dirname, 'index.html'),
+    },
+    external: [...externalDeps, ...tsPaths],
+  },
   },
   server: {
     port: 5173,

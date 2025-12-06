@@ -8,7 +8,7 @@ import {
   default as electronDevtoolsInstaller,
   REACT_DEVELOPER_TOOLS,
 } from 'electron-devtools-installer';
-import { ncfService, NCFParams, NCFResponse } from './services/ncfService';
+import { ncfService, NCFParams, NCFResponse } from './components/services/ncfService';
 import fs from 'node:fs';
 
 // In-memory scenario store

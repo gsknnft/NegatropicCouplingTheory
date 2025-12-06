@@ -1,5 +1,10 @@
 import { Complex } from './types/types';
 
+
+export function toComplexArray(arr: number[]): Complex[] {
+  return arr.map((val) => [val, 0] as Complex);
+}
+
 export function add(a: Complex, b: Complex): Complex {
   return [a[0] + b[0], a[1] + b[1]];
 }

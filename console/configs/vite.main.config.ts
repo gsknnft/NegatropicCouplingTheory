@@ -1,12 +1,9 @@
 import { defineConfig } from 'vite';
 import { builtinModules } from 'node:module';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import path, { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 // import fs from 'node:fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 export default defineConfig({
   cacheDir: path.resolve(__dirname, '../node_modules/.vite-main'),
   
@@ -30,11 +27,7 @@ export default defineConfig({
         ...builtinModules,                 // Node core modules
         ...builtinModules.map(m => `node:${m}`), // Node-prefixed
         'electron',
-        '@serialport/bindings-cpp', 
-        'serialport',
-        "@react-three/drei",
-        "@radix-ui/react-tooltip",
-        "three",
+        '@sigilnet/fft-legacy',
       ],
       output: {
         format: 'es', // ✅ Pure ESM

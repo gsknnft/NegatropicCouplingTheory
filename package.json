@@ -4,12 +4,17 @@
     "private": true,
     "workspaces": [
         "console/**/*",
-        "sdk/**"
+        "packages/*/**"
     ],
     "devDependencies": {
         "@gsknnft/bigint-buffer": "1.4.4",
         "@types/node": "24.10.1",
         "typescript": "^5.2.2"
+    },
+    "pnpm": {
+        "overrides": {
+            "glob": "^11.1.0"
+        }
     },
     "engines": {
         "node": ">=20.0.0",

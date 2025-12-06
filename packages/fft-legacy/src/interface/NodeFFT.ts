@@ -1,4 +1,4 @@
-import FFT from "@sigilnet/fft-ts/core/fft-base/fft";
+import {FFT} from "../fft";
 
 export interface FFTImplementation {
   forward(input: Float64Array | number[]): { real: Float64Array | number[]; imag: Float64Array | number[] };

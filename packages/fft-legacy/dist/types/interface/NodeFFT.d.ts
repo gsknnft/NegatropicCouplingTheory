@@ -6,3 +6,4 @@ export interface FFTImplementation {
     inverse(real: Float64Array | number[], imag: Float64Array | number[]): Float64Array;
 }
 export declare const NodeFFT: FFTImplementation;
+//# sourceMappingURL=NodeFFT.d.ts.map

@@ -61,7 +61,14 @@ fs.readFile(file, 'utf8', (err, data) => {
         return console.error(err);
     const signal = data.split(',').map(Number);
     console.log('📊 Signal:', signal);
-    const fftResult = (0, fft_1.fft)(signal);
+    const fftResult = (0, fft_1.fftFunc)(signal);
+    console.log('🔁 FFT Coefficients:', fftResult);
+    const fft_ = new fft_1.FFT(signal);
+    const fftResult_ = fft_.createComplexArray();
+    const signalComplex = fft_.toComplexArray(signal);
+    fft_.transform(fftResult_, signalComplex);
+    fft_.completeSpectrum(fftResult_);
+    console.log('🔁 FFT Coefficients (FFT class):', fftResult_);
     console.log('🔁 FFT Coefficients:', fftResult);
     const magnitudes = fftutil.fftMag(fftResult);
     console.log('📈 Magnitudes:', magnitudes);

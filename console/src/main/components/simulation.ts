@@ -1,3 +1,5 @@
+import { deriveCoherence } from '@sigilnet/fft-legacy';
+
 /**
  * Negentropic Coupling Framework - TypeScript Simulation Module
  * Author: gsknnft (SigilNet Core Research)
@@ -181,17 +183,21 @@ export class NCFSimulation {
   }
 
   private coherence(edge: Edge): number {
-    const reverseEdge: Edge = { source: edge.target, target: edge.source };
-
-    const h1 = this.entropyField(edge);
-    const h2 = this.entropyField(reverseEdge);
-    const hmax1 = this.hmax(edge);
-    const hmax2 = this.hmax(reverseEdge);
-
-    const k1 = hmax1 > 0 ? h1 / hmax1 : 0;
-    const k2 = hmax2 > 0 ? h2 / hmax2 : 0;
-
-    return 1.0 - Math.abs(k1 - k2);
+    const key = this.edgeKey(edge);
+    const samples = this.probabilities.get(key);
+    if (!samples || samples.length === 0) {
+      return 0;
+    }
+    try {
+      const spectralCoherence = deriveCoherence(Float64Array.from(samples));
+      if (!Number.isFinite(spectralCoherence)) {
+        return 0;
+      }
+      return Math.max(0, Math.min(1, spectralCoherence));
+    } catch (error) {
+      console.warn('Coherence calculation failed', { edge: key, error });
+      return 0;
+    }
   }
 
   private policy(edge: Edge): 'macro' | 'defensive' | 'balanced' {

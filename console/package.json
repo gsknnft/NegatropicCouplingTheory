@@ -10,6 +10,9 @@
     "url": "https://github.com/gsknnft"
   },
   "main": "app/dist/main/index.js",
+  "workspaces": [
+    "../packages/*/**"
+  ],
   "scripts": {
     "dev": "vite",
     "dev:console": "concurrently \"pnpm run dev\" \"wait-on http://localhost:5173 && electron .\"",
@@ -59,11 +62,6 @@
       }
     ]
   },
-  "pnpm": {
-    "overrides": {
-      "glob": "^11.1.0"
-    }
-  },
   "jest": {
     "preset": "ts-jest",
     "setupFilesAfterEnv": [
@@ -97,6 +95,7 @@
   },
   "dependencies": {
     "@electron/notarize": "^3.1.1",
+    "@sigilnet/fft-legacy": "workspace:*",
     "@octokit/request-error": "^7.1.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",

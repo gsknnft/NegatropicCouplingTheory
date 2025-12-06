@@ -1,12 +1,16 @@
 packages:
   - console/**
-  - packages/**
+  - packages/fft-legacy/**
 
-
+ignoredBuiltDependencies:
+  - inotify
 
 onlyBuiltDependencies:
+  - '@gsknnft/bigint-buffer'
   - '@gsknnft/qwormhole'
+  - '@parcel/watcher'
   - '@serialport/bindings-cpp'
+  - better-sqlite3
   - core-js
   - core-js-pure
   - electron

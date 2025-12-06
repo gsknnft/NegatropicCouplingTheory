@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { fft } from './fft'
+import { FFT, fftFunc } from './fft'
 import * as fftutil from './fftutil'
 import { Command } from 'commander';
 import * as fs from 'fs';
@@ -34,9 +34,18 @@ fs.readFile(file, 'utf8', (err, data) => {
   const signal = data.split(',').map(Number);
   console.log('📊 Signal:', signal);
 
-  const fftResult = fft(signal);
+  const fftResult = fftFunc(signal);
   console.log('🔁 FFT Coefficients:', fftResult);
 
+  
+  const fft_ = new FFT(signal);
+  const fftResult_ = fft_.createComplexArray();
+  const signalComplex = fft_.toComplexArray(signal);
+  fft_.transform(fftResult_, signalComplex);
+  fft_.completeSpectrum(fftResult_);
+  console.log('🔁 FFT Coefficients (FFT class):', fftResult_);
+
+  console.log('🔁 FFT Coefficients:', fftResult);
   const magnitudes = fftutil.fftMag(fftResult);
   console.log('📈 Magnitudes:', magnitudes);
 

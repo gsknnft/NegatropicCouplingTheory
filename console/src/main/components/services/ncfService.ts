@@ -7,11 +7,11 @@ import {
   SimulationState,
   SimulationMetrics,
   Edge,
-} from '../components/simulation';
+} from '../simulation';
 import {
   getUploadedScenario,
   getUploadedScenarioMetadata,
-} from '../components/uploadStore';
+} from '../uploadStore';
 import { execSync } from 'node:child_process';
 
 export interface NCFParams {
