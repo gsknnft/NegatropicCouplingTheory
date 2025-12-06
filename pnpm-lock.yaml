@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@gsknnft/bigint-buffer':
+        specifier: 1.4.4
+        version: 1.4.4
       '@types/node':
         specifier: 24.10.1
         version: 24.10.1
@@ -350,6 +353,15 @@ importers:
         version: 6.0.1
 
   console/app: {}
+
+  console/shared:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 
@@ -1523,6 +1535,10 @@ packages:
   '@google-cloud/storage@7.18.0':
     resolution: {integrity: sha512-r3ZwDMiz4nwW6R922Z1pwpePxyRwE5GdevYX63hRmAQUkUQJcBH/79EnQPDv5cOv1mFBgevdNWQfi3tie3dHrQ==}
     engines: {node: '>=14'}
+
+  '@gsknnft/bigint-buffer@1.4.4':
+    resolution: {integrity: sha512-KqH983UzyULDKgzP+ZiVT1iOMCmYUC8OCZc9tt4ydUtNPDrI62m4/W0HcaWcSYOU3+SmYTFwv46j/VxSlefRPA==}
+    engines: {node: '>=20.0.0', npm: '>=9.0.0'}
 
   '@hapi/address@5.1.1':
     resolution: {integrity: sha512-A+po2d/dVoY7cYajycYI43ZbYMXukuopIsqCjh5QzsBCipDtdofHntljDlpccMjIfTy6UOkg+5KPriwYch2bXA==}
@@ -9961,6 +9977,10 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  '@gsknnft/bigint-buffer@1.4.4':
+    optionalDependencies:
+      bindings: 1.5.0
 
   '@hapi/address@5.1.1':
     dependencies:

@@ -56,6 +56,10 @@ export interface ScenarioMetadata {
   parameters?: Record<string, unknown>;
   sourcePath?: string;
   format?: string;
+  checksum?: string;
+  sizeBytes?: number;
+  uploadedAt?: string;
+  sourceName?: string;
 }
 
 export interface SimulationState {
@@ -91,7 +95,7 @@ declare global {
       step: () => Promise<NCFResponse<SimulationMetrics>>;
       getState: () => Promise<NCFResponse<SimulationState>>;
       reset: (params: NCFParams) => Promise<NCFResponse<SimulationState>>;
-      uploadScenario: (payload: { name: string; type: string; data: ArrayBuffer; saveToFile?: boolean }) => Promise<NCFResponse<{ path?: string; name?: string }>>;
+      uploadScenario: (payload: { name: string; type: string; data: ArrayBuffer; saveToFile?: boolean }) => Promise<NCFResponse<{ path?: string; name?: string; checksum?: string; size?: number }>>;
     } & NCFDiagnostics;
     quantum: {
       platform: string;

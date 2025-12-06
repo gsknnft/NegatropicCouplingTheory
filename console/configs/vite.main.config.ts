@@ -3,7 +3,7 @@ import { builtinModules } from 'node:module';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import path, { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import fs from 'node:fs';
+// import fs from 'node:fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

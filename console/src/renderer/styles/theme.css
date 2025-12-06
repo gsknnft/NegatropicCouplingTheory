@@ -152,21 +152,46 @@ body {
   font-size: 0.85rem;
 }
 
+.pill.mono {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
 .status-row {
   display: flex;
   gap: 12px;
   align-items: center;
   margin: -10px 0 20px;
   padding: 0 2px;
+  flex-wrap: wrap;
 }
 
-.status-message {
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  background-color: var(--bg-secondary);
   color: var(--text-secondary);
+  box-shadow: var(--shadow);
+  gap: 6px;
 }
 
-.status-error {
+.status-pill.success {
+  border-color: var(--accent-macro);
+  color: var(--accent-macro);
+}
+
+.status-pill.error {
+  border-color: var(--accent-defensive);
   color: var(--accent-defensive);
+}
+
+.status-pill.detailed {
   font-weight: 600;
+  background-color: rgba(255, 68, 68, 0.08);
 }
 
 button {

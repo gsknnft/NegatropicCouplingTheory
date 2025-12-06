@@ -2,6 +2,8 @@ packages:
   - console/**
   - sdk/**
 
+
+
 onlyBuiltDependencies:
   - '@gsknnft/qwormhole'
   - '@serialport/bindings-cpp'

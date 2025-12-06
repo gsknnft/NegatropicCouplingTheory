@@ -20,6 +20,10 @@ export interface ScenarioMetadata {
   parameters?: Record<string, unknown>;
   sourcePath?: string;
   format?: string;
+  checksum?: string;
+  sizeBytes?: number;
+  uploadedAt?: string;
+  sourceName?: string;
 }
 
 export interface SimulationMetrics {

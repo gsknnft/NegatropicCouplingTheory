@@ -8,7 +8,10 @@ import {
   SimulationMetrics,
   Edge,
 } from '../simulation';
-import { uploadedScenarios } from '../uploadStore';
+import {
+  getUploadedScenario,
+  getUploadedScenarioMetadata,
+} from '../uploadStore';
 import { execSync } from 'node:child_process';
 
 export interface NCFParams {
@@ -125,6 +128,11 @@ export class NCFService {
       parsed.initial_state?.probability_distributions ?? {};
     const distributions = this.parseDistributions(rawDistributions);
 
+    const resolvedSource = path.isAbsolute(sourcePath)
+      ? sourcePath
+      : path.resolve(process.cwd(), sourcePath);
+    const relativeSource = path.relative(process.cwd(), resolvedSource);
+
     const metadata: ScenarioMetadata = {
       name: parsed.metadata?.name ?? path.basename(sourcePath),
       description: parsed.metadata?.description,
@@ -132,9 +140,21 @@ export class NCFService {
       version: parsed.metadata?.version,
       date: parsed.metadata?.date,
       parameters: parsed.simulation_parameters ?? parsed.metadata?.parameters,
-      sourcePath,
+      sourcePath:
+        relativeSource && !relativeSource.startsWith('..')
+          ? relativeSource
+          : resolvedSource,
       format,
     };
+
+    const uploadMetadata = getUploadedScenarioMetadata(resolvedSource);
+    if (uploadMetadata) {
+      metadata.checksum = uploadMetadata.checksum;
+      metadata.sizeBytes = uploadMetadata.sizeBytes;
+      metadata.uploadedAt = uploadMetadata.uploadedAt;
+      metadata.sourceName = uploadMetadata.sourceName;
+      metadata.sourcePath = uploadMetadata.sourcePath;
+    }
 
     return {
       nodes,
@@ -145,17 +165,19 @@ export class NCFService {
   }
 
   private async readScenarioBuffer(filePath: string): Promise<Buffer> {
-    const isUploadPath =
-      filePath.includes(`${path.sep}uploads${path.sep}`) ||
-      filePath.startsWith(`uploads${path.sep}`) ||
-      filePath.startsWith('uploads/');
-    const upload = uploadedScenarios.get(path.basename(filePath));
-    if (isUploadPath && upload) {
-      return upload.buffer;
-    }
     const absolute = path.isAbsolute(filePath)
       ? filePath
       : path.resolve(process.cwd(), filePath);
+    const isUploadPath =
+      absolute.includes(`${path.sep}uploads${path.sep}`) ||
+      absolute.startsWith(`uploads${path.sep}`) ||
+      absolute.startsWith(path.resolve(process.cwd(), 'uploads'));
+    if (isUploadPath) {
+      const upload = getUploadedScenario(absolute);
+      if (upload) {
+        return upload.buffer;
+      }
+    }
     return fs.readFile(absolute);
   }
 
@@ -200,10 +222,11 @@ export class NCFService {
     const resolvedPath = filePath
       ? path.resolve(process.cwd(), filePath)
       : DEFAULT_SCENARIO;
+    const uploadsRoot = path.resolve(process.cwd(), 'uploads');
     const isUploadPath =
       resolvedPath.includes(`${path.sep}uploads${path.sep}`) ||
-      resolvedPath.startsWith(`uploads${path.sep}`) ||
-      resolvedPath.startsWith('uploads/');
+      resolvedPath.startsWith(`${uploadsRoot}${path.sep}`) ||
+      resolvedPath === uploadsRoot;
     const cached = this.scenarioCache.get(resolvedPath);
     if (cached && !isUploadPath) {
       return cloneScenario(cached);
