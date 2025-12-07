@@ -4,8 +4,7 @@ import {
   averageFixedPoint,
   compareFixedPoint,
   subtractFixedPoint,
-  toFixedPoint,
-  fixedPointToBigInt,
+  toFixedPoint
 } from '@gsknnft/bigint-buffer';
 
 /**
@@ -37,17 +36,17 @@ export interface ScenarioMetadata {
 }
 
 export interface SimulationMetrics {
-  negentropy: bigint;
-  coherence: bigint;
-  velocity: bigint;
+  negentropy: string;
+  coherence: string;
+  velocity: string;
   time: number;
 }
 
 export interface EdgeMetrics {
-  entropy: bigint;
-  negentropy: bigint;
-  coherence: bigint;
-  velocity: bigint;
+  entropy: string;
+  negentropy: string;
+  coherence: string;
+  velocity: string;
   policy: 'macro' | 'defensive' | 'balanced';
 }
 
@@ -185,11 +184,11 @@ export class NCFSimulation {
     return 1.0 - h / hMax;
   }
 
-  private entropyVelocity(): bigint {
+  private entropyVelocity(): string {
     if (this.history.length === 0) {
-      return fixedPointToBigInt(ZERO_FIXED_POINT);
+      return ZERO_FIXED_POINT;
     }
-    return this.history[this.history.length - 1].velocity ?? fixedPointToBigInt(ZERO_FIXED_POINT);
+    return this.history[this.history.length - 1].velocity ?? ZERO_FIXED_POINT;
   }
 
   private coherence(edge: Edge): number {
@@ -251,14 +250,16 @@ export class NCFSimulation {
     if (this.history.length > 0) {
       avgVelocity = subtractFixedPoint(
         avgNegentropy,
-        toFixedPoint(Number(this.history[this.history.length - 1].negentropy)),
+        this.history[this.history.length - 1].negentropy,
       );
     }
+    
+    // If velocity values are too large or small, consider increasing FIXED_POINT_DECIMALS in your conversion helpers
 
     const metrics: SimulationMetrics = {
-      negentropy: fixedPointToBigInt(avgNegentropy),
-      coherence: fixedPointToBigInt(avgCoherence),
-      velocity: fixedPointToBigInt(avgVelocity),
+      negentropy: avgNegentropy,
+      coherence: avgCoherence,
+      velocity: avgVelocity,
       time: this.time,
     };
 
@@ -280,10 +281,10 @@ export class NCFSimulation {
     for (const edge of this.edges) {
       const key = this.edgeKey(edge);
       const negentropy = toFixedPoint(this.negentropicIndex(edge));
-      const coherence = fixedPointToBigInt(toFixedPoint(this.coherence(edge)));
+      const coherence = toFixedPoint(this.coherence(edge));
       edgeMetrics.set(key, {
-        entropy: fixedPointToBigInt(toFixedPoint(this.entropyField(edge))),
-        negentropy: fixedPointToBigInt(negentropy),
+        entropy: toFixedPoint(this.entropyField(edge)),
+        negentropy,
         coherence,
         velocity: meshVelocity,
         policy: this.policyFromNegentropy(negentropy),
@@ -294,9 +295,9 @@ export class NCFSimulation {
       this.history.length > 0
         ? this.history[this.history.length - 1]
         : {
-            negentropy: fixedPointToBigInt(ZERO_FIXED_POINT),
-            coherence: fixedPointToBigInt(ZERO_FIXED_POINT),
-            velocity: fixedPointToBigInt(ZERO_FIXED_POINT),
+            negentropy: ZERO_FIXED_POINT,
+            coherence: ZERO_FIXED_POINT,
+            velocity: ZERO_FIXED_POINT,
             time: 0,
           };
 

@@ -18,7 +18,9 @@ export default defineConfig({
         ...builtinModules,                 // Node core modules
         ...builtinModules.map(m => `node:${m}`), // Node-prefixed
         'electron',
-        '@gsknnft/bigint-buffer'
+        '@gsknnft/bigint-buffer',
+        'path',
+        'fs'
       ],
       
       output: {

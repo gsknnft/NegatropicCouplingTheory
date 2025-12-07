@@ -28,7 +28,9 @@ export default defineConfig({
         ...builtinModules.map(m => `node:${m}`), // Node-prefixed
         'electron',
         '@sigilnet/fft-legacy',
-        '@gsknnft/bigint-buffer'
+        '@gsknnft/bigint-buffer',
+        'path',
+        'fs'
       ],
       output: {
         format: 'es', // ✅ Pure ESM

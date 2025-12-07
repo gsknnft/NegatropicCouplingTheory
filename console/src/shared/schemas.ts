@@ -1,4 +1,6 @@
 import { z } from 'zod';
+// NOTE: FixedPoint values are validated and stored as strings for serialization and transport.
+//       For all calculations, convert to bigint internally and back to string for storage/IPC/validation.
 export const FIXED_POINT_PATTERN = /^-?0x[0-9a-fA-F]+$/;
 
 export const EdgeSchema = z.object({
