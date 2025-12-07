@@ -13,6 +13,7 @@ import './styles/theme.css';
 import { ClassicalVsNegentropic } from './components/ClassicalVsNegentropic';
 import { SimulationStateSchema } from '../shared/schemas';
 import { ScenarioDiagnostics } from './components/ScenarioDiagnostics';
+import { fromFixedPoint } from '../shared/fixedPoint';
 
 type EdgeMetricPayload =
   | Map<string, EdgeMetrics>
@@ -409,8 +410,8 @@ export const App: React.FC = () => {
       <div className="panel">
         <h2>Classical vs Negentropic</h2>
         {state && (() => {
-          const coherenceArr = state.history.map(h => h.coherence);
-          const negentropyArr = state.history.map(h => h.negentropy);
+          const coherenceArr = state.history.map(h => fromFixedPoint(h.coherence));
+          const negentropyArr = state.history.map(h => fromFixedPoint(h.negentropy));
           if (
             coherenceArr.length === negentropyArr.length &&
             coherenceArr.every((v, i) => v === negentropyArr[i])
@@ -418,12 +419,27 @@ export const App: React.FC = () => {
             // eslint-disable-next-line no-console
             console.warn('Coherence and negentropy arrays are identical!', coherenceArr);
           }
+
+          const throughputSeries = state.history.map(h => {
+            const throughput = h.throughput ? fromFixedPoint(h.throughput) : undefined;
+            const flowRate = h.flowRate ? fromFixedPoint(h.flowRate) : undefined;
+            const velocity = fromFixedPoint(h.velocity);
+            return throughput ?? flowRate ?? velocity * 100;
+          });
+
+          const entropySeries = state.history.map(h => {
+            if (h.entropy) {
+              return fromFixedPoint(h.entropy);
+            }
+            return 1 - fromFixedPoint(h.negentropy);
+          });
+
           return (
             <ClassicalVsNegentropic
-              data={state.history.map(h => ({
+              data={state.history.map((h, idx) => ({
                 timestamp: h.time,
-                throughput: h.throughput ?? h.flowRate ?? h.velocity * 100,
-                entropy: h.entropy ?? (1 - h.negentropy),
+                throughput: throughputSeries[idx],
+                entropy: entropySeries[idx],
               }))}
               signalData={{
                 coherence: coherenceArr,
@@ -438,4 +454,3 @@ export const App: React.FC = () => {
     </div>
   );
 };
-

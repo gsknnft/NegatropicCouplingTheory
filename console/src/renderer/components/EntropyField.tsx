@@ -1,6 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SimulationMetrics } from '../types';
+import { fromFixedPoint } from '../../shared/fixedPoint';
 
 interface EntropyFieldProps {
   history: SimulationMetrics[];
@@ -10,9 +11,9 @@ export const EntropyField: React.FC<EntropyFieldProps> = ({ history }) => {
   // Take last 50 data points for better visualization
   const data = history.slice(-50).map((metrics) => ({
     time: metrics.time,
-    negentropy: metrics.negentropy,
-    coherence: metrics.coherence,
-    velocity: metrics.velocity,
+    negentropy: fromFixedPoint(metrics.negentropy),
+    coherence: fromFixedPoint(metrics.coherence),
+    velocity: fromFixedPoint(metrics.velocity),
   }));
 
   return (

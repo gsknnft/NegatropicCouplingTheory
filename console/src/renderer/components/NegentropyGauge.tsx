@@ -1,12 +1,16 @@
 import React from 'react';
 import { SimulationMetrics } from '../types';
+import { fromFixedPoint } from '../../shared/fixedPoint';
+
 
 interface NegentropyGaugeProps {
   metrics: SimulationMetrics;
 }
 
 export const NegentropyGauge: React.FC<NegentropyGaugeProps> = ({ metrics }) => {
-  const { negentropy, coherence, velocity } = metrics;
+  const negentropy = fromFixedPoint(metrics.negentropy);
+  const coherence = fromFixedPoint(metrics.coherence);
+  const velocity = fromFixedPoint(metrics.velocity);
 
   const getColorForValue = (value: number): string => {
     if (value > 0.8) return '#00ff88'; // High - green

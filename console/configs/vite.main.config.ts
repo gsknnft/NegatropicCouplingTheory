@@ -6,7 +6,7 @@ import path from 'node:path';
 
 export default defineConfig({
   cacheDir: path.resolve(__dirname, '../node_modules/.vite-main'),
-  
+
   build: {
     outDir: path.resolve(__dirname, '../app/dist/main'),
     emptyOutDir: true,
@@ -28,6 +28,7 @@ export default defineConfig({
         ...builtinModules.map(m => `node:${m}`), // Node-prefixed
         'electron',
         '@sigilnet/fft-legacy',
+        '@gsknnft/bigint-buffer'
       ],
       output: {
         format: 'es', // ✅ Pure ESM

@@ -1,4 +1,5 @@
 
+import './setup-native-bindings';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import path from 'node:path';
 import log from 'electron-log/main';
@@ -50,9 +51,16 @@ async function installExtensions() {
 }
 
 async function createWindow() {
-  const dev = true; // !app.isPackaged;
+  const devServerUrl =
+    process.env.VITE_DEV_SERVER_URL ||
+    process.env.ELECTRON_RENDERER_URL ||
+    'http://localhost:5173';
+  const rendererHtmlPath = path.join(__dirname, '../renderer/index.html');
+  const useDevServer =
+    !app.isPackaged &&
+    !!(process.env.VITE_DEV_SERVER_URL || process.env.ELECTRON_RENDERER_URL);
 
-  if (dev) await installExtensions();
+  if (useDevServer) await installExtensions();
 
   mainWindow = new BrowserWindow({
     show: false,
@@ -60,17 +68,28 @@ async function createWindow() {
     height: 728,
     icon: path.join(process.cwd(), 'assets/icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index'),
+      preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       sandbox: false,
     },
   });
 
-  const url = dev
-    ? 'http://localhost:5173'
-    : `file://${path.join(__dirname, '../app/dist/renderer/index.html')}`;
+  const loadRenderer = async () => {
+    if (useDevServer) {
+      await mainWindow?.loadURL(devServerUrl);
+      return;
+    }
 
-  await mainWindow.loadURL(url);
+    if (fs.existsSync(rendererHtmlPath)) {
+      await mainWindow?.loadFile(rendererHtmlPath);
+      return;
+    }
+
+    // Last resort: fall back to dev server URL so the window isn't blank.
+    await mainWindow?.loadURL(devServerUrl);
+  };
+
+  await loadRenderer();
   mainWindow.webContents.reloadIgnoringCache();
   mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.on('closed', () => (mainWindow = null));

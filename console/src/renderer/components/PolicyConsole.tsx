@@ -1,5 +1,6 @@
 import React from 'react';
 import { SimulationState } from '../types';
+import { fromFixedPoint } from '../../shared/fixedPoint';
 
 interface PolicyConsoleProps {
   state: SimulationState;
@@ -64,7 +65,7 @@ export const PolicyConsole: React.FC<PolicyConsoleProps> = ({ state }) => {
               </span>
               <span className="edge-policy">{metrics.policy.toUpperCase()}</span>
               <span className="edge-metrics">
-                N={metrics.negentropy.toFixed(3)} C={metrics.coherence.toFixed(3)}
+                N={fromFixedPoint(metrics.negentropy).toFixed(3)} C={fromFixedPoint(metrics.coherence).toFixed(3)}
               </span>
             </div>
           );

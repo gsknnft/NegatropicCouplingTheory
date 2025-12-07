@@ -11,7 +11,7 @@
   },
   "main": "app/dist/main/index.js",
   "workspaces": [
-    "../packages/*/**"
+    "../packages/**"
   ],
   "scripts": {
     "dev": "vite",
@@ -28,8 +28,8 @@
     "build:renderer": "vite build --config configs/vite.renderer.config.ts",
     "electron:dev": "wait-on tcp:5173 && electron .",
     "build:pub": "vite build && electron-updater build --publish",
-    "postinstall": "cross-env CI=true ts-node scripts/ensure-package-manager.ts && ts-node scripts/update-electron-version.ts && ts-node scripts/check-native-dep.ts && pnpm run postinstall:build",
-    "postinstall:build": "cross-env CI=true ts-node scripts/postinstall.ts",
+    "postinstall:old": "cross-env CI=true ts-node scripts/ensure-package-manager.ts && ts-node scripts/update-electron-version.ts && ts-node scripts/check-native-dep.ts && pnpm run postinstall:build",
+    "postinstall": "cross-env CI=true ts-node scripts/postinstall.ts",
     "package": "ts-node ./scripts/clean.ts dist && vite build && electron-updater build --publish never",
     "package:wp": "pnpm run build && electron-updater build --publish never",
     "build:conc": "concurrently \"pnpm run build:main\" \"pnpm run build:renderer\"",
@@ -95,15 +95,15 @@
   },
   "dependencies": {
     "@electron/notarize": "^3.1.1",
-    "@sigilnet/fft-legacy": "workspace:*",
+    "@gsknnft/bigint-buffer": "link:../../bigint-buffer",
     "@octokit/request-error": "^7.1.0",
+    "@sigilnet/fft-legacy": "workspace:*",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.47.0",
     "assert": "^2.1.0",
-    "better-sqlite3": "^12.5.0",
     "chalk": "^5.6.2",
     "crypto-browserify": "^3.12.1",
     "d3": "^7.8.5",
@@ -137,7 +137,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.2.9",
+    "@electron/rebuild": "^4.0.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.6.1",
     "@svgr/webpack": "^8.1.0",
     "@testing-library/jest-dom": "^6.1.3",
@@ -218,7 +218,19 @@
     "productName": "QuantumElectron",
     "appId": "ncf.gsknnft.QuantumElectron",
     "asar": true,
-    "asarUnpack": "**\\*.{node,dll}",
+    "asarUnpack": [
+      "dist/build/Release/*.node"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/build/Release/",
+        "to": "build/Release",
+        "filter": [
+          "*.node"
+        ]
+      },
+      "./assets/**"
+    ],
     "files": [
       "dist/**",
       "node_modules/**",
@@ -278,9 +290,6 @@
       "buildResources": "assets",
       "output": "release/build"
     },
-    "extraResources": [
-      "./assets/**"
-    ],
     "publish": {
       "provider": "github",
       "owner": "gsknnft",

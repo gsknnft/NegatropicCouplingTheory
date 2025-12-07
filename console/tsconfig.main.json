@@ -1,11 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "nodenext",
     "noEmit": false,
     "outDir": "dist/main",
-    "lib": ["ES2020"],
+    "lib": ["ESNext"],
     "jsx": "preserve",
     "allowImportingTsExtensions": false
   },

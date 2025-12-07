@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { SimulationState } from '../types';
-
+import { fromFixedPoint } from '../../shared/fixedPoint';
 interface CouplingMapProps {
   state: SimulationState;
 }
@@ -41,10 +41,13 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
     const links: D3Link[] = state.edges.map(edge => {
       const key = `${edge.source}-${edge.target}`;
       const edgeMetrics = state.edgeMetrics.get(key);
+      const negentropy = edgeMetrics?.negentropy
+        ? fromFixedPoint(edgeMetrics.negentropy)
+        : 0;
       return {
         source: edge.source,
         target: edge.target,
-        negentropy: edgeMetrics?.negentropy || 0,
+        negentropy,
         policy: edgeMetrics?.policy || 'balanced',
       };
     });

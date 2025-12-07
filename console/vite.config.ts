@@ -6,7 +6,7 @@ import ts from "./tsconfig.json";
 const externalDeps = [
   "fs", "path", "os", "http", "https", "stream", "zlib",
   "events", "buffer", "util", "crypto", "child_process", "readline",
-  "@sigilnet/fft-legacy"
+  "@sigilnet/fft-legacy", "@gsknnft/bigint-buffer"
   // keep only runtime externals here
 ];
 

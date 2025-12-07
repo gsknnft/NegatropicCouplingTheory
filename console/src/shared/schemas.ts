@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export const FIXED_POINT_PATTERN = /^-?0x[0-9a-fA-F]+$/;
 
 export const EdgeSchema = z.object({
   source: z.number().int().nonnegative(),
@@ -24,24 +25,28 @@ export const ScenarioMetadataSchema = z.object({
 
 export type ScenarioMetadata = z.infer<typeof ScenarioMetadataSchema>;
 
+const FixedPointValueSchema = z
+  .string()
+  .regex(FIXED_POINT_PATTERN, 'Invalid fixed-point value');
+
 export const SimulationMetricsSchema = z.object({
-  negentropy: z.number(),
-  coherence: z.number(),
-  velocity: z.number(),
+  negentropy: FixedPointValueSchema,
+  coherence: FixedPointValueSchema,
+  velocity: FixedPointValueSchema,
   time: z.number(),
-  entropy: z.number().optional(),
-  throughput: z.number().optional(),
-  flowRate: z.number().optional(),
+  entropy: FixedPointValueSchema.optional(),
+  throughput: FixedPointValueSchema.optional(),
+  flowRate: FixedPointValueSchema.optional(),
   fieldState: z.enum(['macro', 'balanced', 'defensive']).optional(),
 });
 
 export type SimulationMetrics = z.infer<typeof SimulationMetricsSchema>;
 
 export const EdgeMetricsSchema = z.object({
-  entropy: z.number(),
-  negentropy: z.number(),
-  coherence: z.number(),
-  velocity: z.number(),
+  entropy: FixedPointValueSchema,
+  negentropy: FixedPointValueSchema,
+  coherence: FixedPointValueSchema,
+  velocity: FixedPointValueSchema,
   policy: z.enum(['macro', 'balanced', 'defensive']),
 });
 

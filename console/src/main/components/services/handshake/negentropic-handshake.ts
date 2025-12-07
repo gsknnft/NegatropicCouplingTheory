@@ -10,7 +10,7 @@ import { Buffer } from 'node:buffer';
 import {
   negentropicHandshakeSchema,
   type NegentropicHandshake,
-} from '../../../shared/scp';
+} from '../../../../shared/scp';
 
 export interface NegentropicHandshakeParams {
   version?: string;

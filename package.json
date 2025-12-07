@@ -7,13 +7,14 @@
         "packages/*/**"
     ],
     "devDependencies": {
-        "@gsknnft/bigint-buffer": "1.4.4",
+        "rimraf": "^6.1.0",
+        "@gsknnft/bigint-buffer": "link:../bigint-buffer",
         "@types/node": "24.10.1",
         "typescript": "^5.2.2"
     },
     "pnpm": {
         "overrides": {
-            "glob": "^11.1.0"
+            "glob": "^8.1.0"
         }
     },
     "engines": {

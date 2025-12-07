@@ -1,9 +1,9 @@
 import {
   handshakePayloadSchema,
   type HandshakePayload,
-} from '../../../shared/scp';
+} from '../../../../shared/scp';
 
-export { type HandshakePayload } from '../../../shared/scp';
+export { type HandshakePayload } from '../../../../shared/scp';
 
 export const isHandshakePayload = (value: unknown): value is HandshakePayload =>
   handshakePayloadSchema.safeParse(value).success;
