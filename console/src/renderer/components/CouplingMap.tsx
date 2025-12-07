@@ -15,10 +15,12 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   target: number | D3Node;
   negentropy: number;
   policy: string;
+  loss: number;
 }
 
 export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const positionsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
 
   useEffect(() => {
     if (!svgRef.current || !state) return;
@@ -35,7 +37,12 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
       .attr('viewBox', [0, 0, width, height]);
 
     // Create nodes
-    const nodes: D3Node[] = Array.from({ length: state.nodes }, (_, i) => ({ id: i }));
+    const nodes: D3Node[] = Array.from({ length: state.nodes }, (_, i) => {
+      const prior = positionsRef.current.get(i);
+      return prior
+        ? { id: i, x: prior.x, y: prior.y }
+        : { id: i, x: width / 2 + Math.random() * 40 - 20, y: height / 2 + Math.random() * 40 - 20 };
+    });
 
     // Create links with metrics
     const links: D3Link[] = state.edges.map(edge => {
@@ -44,20 +51,28 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
       const negentropy = edgeMetrics?.negentropy
         ? fromFixedPoint(edgeMetrics.negentropy)
         : 0;
+      const loss = edgeMetrics?.loss
+        ? fromFixedPoint(edgeMetrics.loss)
+        : 0;
+      const clampedLoss = Math.min(1, Math.max(0, loss));
       return {
         source: edge.source,
         target: edge.target,
         negentropy,
         policy: edgeMetrics?.policy || 'balanced',
+        loss: clampedLoss,
       };
     });
 
     // Create force simulation
     const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink<D3Node, D3Link>(links).id((d) => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-300))
+      .alpha(0.35)
+      .alphaDecay(0.08)
+      .velocityDecay(0.5)
+      .force('link', d3.forceLink<D3Node, D3Link>(links).id((d) => d.id).distance(120).strength(0.65))
+      .force('charge', d3.forceManyBody().strength(-200))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(30));
+      .force('collision', d3.forceCollide().radius(32));
 
     // Add arrow markers
     svg.append('defs').selectAll('marker')
@@ -88,9 +103,33 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
         d.policy === 'defensive' ? '#ff4444' : 
         '#ffaa00'
       )
-      .attr('stroke-width', d => 1 + d.negentropy * 3)
-      .attr('stroke-opacity', 0.6)
+      .attr('stroke-width', d => (1 + d.negentropy * 3) * (1 - d.loss * 0.5))
+      .attr('stroke-opacity', d => 0.25 + (1 - d.loss) * 0.55)
+      .attr('stroke-dasharray', d => d.loss > 0.35 ? '6 4' : '0')
       .attr('marker-end', d => `url(#arrow-${d.policy})`);
+
+    // Packet-like flow indicators
+    const packetProgress = links.map(() => Math.random());
+    const packetSpeed = links.map(
+      (d) => Math.max(
+        0.001,
+        (0.006 + d.negentropy * 0.012 + (d.policy === 'macro' ? 0.004 : 0)) *
+          (1 - d.loss * 0.6),
+      ),
+    );
+
+    const packets = svg.append('g')
+      .attr('class', 'coupling-packets')
+      .selectAll('circle')
+      .data(links)
+      .enter().append('circle')
+      .attr('r', d => 3 + d.negentropy * 4)
+      .attr('fill', d => 
+        d.policy === 'macro' ? '#00ff88' : 
+        d.policy === 'defensive' ? '#ff4444' : 
+        '#ffaa00'
+      )
+      .attr('opacity', d => (0.3 + d.negentropy * 0.5) * (1 - d.loss * 0.7));
 
     // Drag functions
     function dragstarted(event: d3.D3DragEvent<SVGCircleElement, D3Node, D3Node>) {
@@ -140,6 +179,37 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em');
 
+    const updatePackets = () => {
+      packets
+        .attr('cx', (d, i) => {
+          const progress = packetProgress[i];
+          const source = d.source as D3Node;
+          const target = d.target as D3Node;
+          const sx = source.x ?? width / 2;
+          const sy = source.y ?? height / 2;
+          const tx = target.x ?? width / 2;
+          const ty = target.y ?? height / 2;
+          return sx + (tx - sx) * progress;
+        })
+        .attr('cy', (d, i) => {
+          const progress = packetProgress[i];
+          const source = d.source as D3Node;
+          const target = d.target as D3Node;
+          const sx = source.x ?? width / 2;
+          const sy = source.y ?? height / 2;
+          const tx = target.x ?? width / 2;
+          const ty = target.y ?? height / 2;
+          return sy + (ty - sy) * progress;
+        });
+    };
+
+    const flowTimer = d3.timer(() => {
+      links.forEach((_, idx) => {
+        packetProgress[idx] = (packetProgress[idx] + packetSpeed[idx]) % 1;
+      });
+      updatePackets();
+    });
+
     // Update positions on tick
     simulation.on('tick', () => {
       link
@@ -155,10 +225,20 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
       labels
         .attr('x', d => d.x!)
         .attr('y', d => d.y!);
+
+      updatePackets();
+
+      // Persist node positions to reduce collapse on next state update
+      nodes.forEach(n => {
+        if (n.x !== undefined && n.y !== undefined) {
+          positionsRef.current.set(n.id, { x: n.x, y: n.y });
+        }
+      });
     });
 
     return () => {
       simulation.stop();
+      flowTimer.stop();
     };
   }, [state]);
 
@@ -177,6 +257,10 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
         <div className="legend-item">
           <span className="legend-color" style={{ backgroundColor: '#ff4444' }}></span>
           <span>Defensive (N &lt; 0.3)</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#888', border: '1px dashed #888' }}></span>
+          <span>Dashed = high loss/attenuation</span>
         </div>
       </div>
     </div>

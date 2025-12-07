@@ -2,7 +2,8 @@
 import { bigintToHex, hexToBigint } from './utils';
 
 export type FixedPoint = string;
-export const FIXED_POINT_DECIMALS = 9;
+// Increase precision for smoother metric deltas
+export const FIXED_POINT_DECIMALS = 12;
 export const ZERO_FIXED_POINT: FixedPoint = '0x0';
 
 

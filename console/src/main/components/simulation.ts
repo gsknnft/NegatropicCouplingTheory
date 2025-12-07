@@ -40,6 +40,8 @@ export interface SimulationMetrics {
   coherence: string;
   velocity: string;
   time: number;
+  throughput?: string;
+  loss?: string;
 }
 
 export interface EdgeMetrics {
@@ -48,6 +50,7 @@ export interface EdgeMetrics {
   coherence: string;
   velocity: string;
   policy: 'macro' | 'defensive' | 'balanced';
+  loss?: string;
 }
 
 export interface SimulationState {
@@ -75,6 +78,9 @@ export interface SimulationOptions {
 
 const MACRO_THRESHOLD = toFixedPoint(0.8);
 const DEFENSIVE_THRESHOLD = toFixedPoint(0.3);
+const BASE_LOSS = 0.08; // baseline attenuation per hop
+const LOSS_VARIANCE = 0.12; // jitter on loss to model network volatility
+const NEGENTROPY_SHIELD = 0.35; // how much negentropy counters loss
 
 export class NCFSimulation {
   private nNodes: number;
@@ -84,6 +90,10 @@ export class NCFSimulation {
   private history: SimulationMetrics[];
   private time: number;
   private scenario?: SimulationScenario;
+  private adjacency: Map<number, Edge[]>;
+  private edgeLosses: Map<string, number>;
+  private lastLossRatio: number;
+  private lastThroughput: number;
 
   constructor(options: SimulationOptions = {}) {
     const { nodes = 5, edges = 10, scenario } = options;
@@ -94,8 +104,21 @@ export class NCFSimulation {
     this.history = [];
     this.time = 0;
     this.scenario = scenario;
+    this.adjacency = new Map();
+    this.edgeLosses = new Map();
+    this.lastLossRatio = 0;
+    this.lastThroughput = 1;
 
     this.initializeMesh();
+  }
+
+  private rebuildAdjacency(): void {
+    this.adjacency.clear();
+    for (const edge of this.edges) {
+      const list = this.adjacency.get(edge.source) ?? [];
+      list.push(edge);
+      this.adjacency.set(edge.source, list);
+    }
   }
 
   private initializeMesh(): void {
@@ -103,6 +126,10 @@ export class NCFSimulation {
       this.applyScenario(this.scenario);
       return;
     }
+
+    this.edgeLosses.clear();
+    this.lastLossRatio = 0;
+    this.lastThroughput = 1;
 
     // Create random directed edges
     const allPossible: Edge[] = [];
@@ -125,13 +152,18 @@ export class NCFSimulation {
     // Initialize random probability distributions for each edge
     for (const edge of this.edges) {
       const key = this.edgeKey(edge);
-      const probs = Array.from({ length: 10 }, () => Math.random() * 0.9 + 0.1);
-      const sum = probs.reduce((a, b) => a + b, 0);
-      this.probabilities.set(
-        key,
-        probs.map((p) => p / sum),
-      );
+      const length = 10;
+      const base = Array.from({ length }, () => Math.random() * 0.2);
+      const spikes = Math.max(1, Math.floor(Math.random() * 3));
+      for (let i = 0; i < spikes; i++) {
+        const idx = Math.floor(Math.random() * length);
+        base[idx] += 1 + Math.random() * 1.5;
+      }
+      const sum = base.reduce((a, b) => a + b, 0);
+      this.probabilities.set(key, base.map((p) => p / sum));
     }
+
+    this.rebuildAdjacency();
 
     console.log(
       `Mesh initialized: ${this.nNodes} nodes, ${this.edges.length} edges`,
@@ -143,12 +175,17 @@ export class NCFSimulation {
     this.edges = scenario.edges;
     this.nEdges = scenario.edges.length;
     this.probabilities.clear();
+    this.edgeLosses.clear();
+    this.lastLossRatio = 0;
+    this.lastThroughput = 1;
 
     for (const [key, probs] of scenario.distributions.entries()) {
       const sum = probs.reduce((a, b) => a + b, 0);
       const normalized = sum > 0 ? probs.map((p) => p / sum) : probs;
       this.probabilities.set(key, normalized);
     }
+
+    this.rebuildAdjacency();
 
     console.log(
       `Scenario applied: ${this.nNodes} nodes, ${this.edges.length} edges, ` +
@@ -177,6 +214,13 @@ export class NCFSimulation {
     return Math.log2(p.length);
   }
 
+  private clamp01(value: number): number {
+    if (!Number.isFinite(value)) return 0;
+    if (value < 0) return 0;
+    if (value > 1) return 1;
+    return value;
+  }
+
   private negentropicIndex(edge: Edge): number {
     const h = this.entropyField(edge);
     const hMax = this.hmax(edge);
@@ -199,10 +243,20 @@ export class NCFSimulation {
     }
     try {
       const spectralCoherence = deriveCoherence(Float64Array.from(samples));
-      if (!Number.isFinite(spectralCoherence)) {
-        return 0;
+      const spectral = this.clamp01(
+        Number.isFinite(spectralCoherence) ? spectralCoherence : 0,
+      );
+
+      // Fallback: variation-based coherence (smoothness of distribution)
+      let totalVariation = 0;
+      for (let i = 1; i < samples.length; i++) {
+        totalVariation += Math.abs(samples[i] - samples[i - 1]);
       }
-      return Math.max(0, Math.min(1, spectralCoherence));
+      const variationCoherence = this.clamp01(1 - totalVariation / 2);
+
+      // Blend to avoid being stuck at 0/1 when spectral collapses
+      const blended = spectral * 0.6 + variationCoherence * 0.4;
+      return this.clamp01(blended);
     } catch (error) {
       console.warn('Coherence calculation failed', { edge: key, error });
       return 0;
@@ -216,22 +270,99 @@ export class NCFSimulation {
   }
 
   private updateDistributions(): void {
+    const transfers = new Map<string, number[]>();
+    const peaks = new Map<string, { idx: number; negentropy: number }>();
+    const edgeLossSamples = new Map<string, { lost: number; attempted: number }>();
+    let stepAttempted = 0;
+    let stepDelivered = 0;
+
+    for (const edge of this.edges) {
+      const key = this.edgeKey(edge);
+      const probs = this.probabilities.get(key);
+      if (!probs || probs.length === 0) continue;
+      let maxIdx = 0;
+      let maxVal = probs[0];
+      for (let i = 1; i < probs.length; i++) {
+        if (probs[i] > maxVal) {
+          maxVal = probs[i];
+          maxIdx = i;
+        }
+      }
+      peaks.set(key, { idx: maxIdx, negentropy: this.negentropicIndex(edge) });
+    }
+
+    // Push packet-like signals along downstream edges using the dominant state
+    for (const edge of this.edges) {
+      const peak = peaks.get(this.edgeKey(edge));
+      if (!peak) continue;
+      const downstreamEdges = this.adjacency.get(edge.target) ?? [];
+      if (downstreamEdges.length === 0) continue;
+
+      const signalStrength = 0.03 + peak.negentropy * 0.25;
+      const coherenceScore = this.clamp01(this.coherence(edge));
+      for (const downstream of downstreamEdges) {
+        const downstreamKey = this.edgeKey(downstream);
+        const downstreamProbs = this.probabilities.get(downstreamKey);
+        if (!downstreamProbs || downstreamProbs.length === 0) continue;
+
+        const channelLoss = this.clamp01(
+          BASE_LOSS +
+            (1 - peak.negentropy) * NEGENTROPY_SHIELD +
+            (1 - coherenceScore) * 0.1 +
+            Math.random() * LOSS_VARIANCE,
+        );
+        const delivered = signalStrength * (1 - channelLoss);
+        const lost = signalStrength - delivered;
+        stepAttempted += signalStrength;
+        stepDelivered += delivered;
+        const lossSample = edgeLossSamples.get(downstreamKey) ?? {
+          lost: 0,
+          attempted: 0,
+        };
+        lossSample.lost += lost;
+        lossSample.attempted += signalStrength;
+        edgeLossSamples.set(downstreamKey, lossSample);
+
+        const transferArray =
+          transfers.get(downstreamKey) ??
+          new Array(downstreamProbs.length).fill(0);
+        const slot = peak.idx % downstreamProbs.length;
+        transferArray[slot] += delivered;
+        transfers.set(downstreamKey, transferArray);
+      }
+    }
+
+    this.edgeLosses.clear();
+    for (const [key, sample] of edgeLossSamples.entries()) {
+      const ratio =
+        sample.attempted > 0 ? sample.lost / sample.attempted : 0;
+      this.edgeLosses.set(key, this.clamp01(ratio));
+    }
+    if (stepAttempted > 0) {
+      this.lastThroughput = this.clamp01(stepDelivered / stepAttempted);
+      this.lastLossRatio = this.clamp01(
+        (stepAttempted - stepDelivered) / stepAttempted,
+      );
+    } else {
+      this.lastThroughput = 1;
+      this.lastLossRatio = 0;
+    }
+
     for (const edge of this.edges) {
       const key = this.edgeKey(edge);
       const probs = this.probabilities.get(key);
       if (!probs) continue;
 
-      // Add small random perturbation and renormalize
-      const noise = Array.from(
-        { length: probs.length },
-        () => Math.random() * 0.1,
-      );
-      const newProbs = probs.map((p, i) => p * 0.9 + noise[i]);
+      const incoming = transfers.get(key) ?? new Array(probs.length).fill(0);
+      const peak = peaks.get(key);
+      const reinforcement =
+        peak && incoming.length > 0 ? 0.05 * peak.negentropy : 0;
+      const newProbs = probs.map((p, i) => {
+        const bias = peak?.idx === i ? reinforcement : 0;
+        return p * 0.82 + incoming[i] + bias + Math.random() * 0.01;
+      });
       const sum = newProbs.reduce((a, b) => a + b, 0);
-      this.probabilities.set(
-        key,
-        newProbs.map((p) => p / sum),
-      );
+      this.probabilities.set(key, newProbs.map((p) => (sum > 0 ? p / sum : p)));
     }
   }
 
@@ -261,6 +392,8 @@ export class NCFSimulation {
       coherence: avgCoherence,
       velocity: avgVelocity,
       time: this.time,
+      throughput: toFixedPoint(this.lastThroughput),
+      loss: toFixedPoint(this.lastLossRatio),
     };
 
     // Log state
@@ -282,12 +415,14 @@ export class NCFSimulation {
       const key = this.edgeKey(edge);
       const negentropy = toFixedPoint(this.negentropicIndex(edge));
       const coherence = toFixedPoint(this.coherence(edge));
+      const lossRatio = this.edgeLosses.get(key) ?? this.lastLossRatio;
       edgeMetrics.set(key, {
         entropy: toFixedPoint(this.entropyField(edge)),
         negentropy,
         coherence,
         velocity: meshVelocity,
         policy: this.policyFromNegentropy(negentropy),
+        loss: toFixedPoint(lossRatio),
       });
     }
 
@@ -327,6 +462,9 @@ export class NCFSimulation {
     this.probabilities.clear();
     this.history = [];
     this.time = 0;
+    this.edgeLosses.clear();
+    this.lastLossRatio = 0;
+    this.lastThroughput = 1;
     this.initializeMesh();
   }
 }

@@ -38,6 +38,7 @@ export const SimulationMetricsSchema = z.object({
   time: z.number(),
   entropy: FixedPointValueSchema.optional(),
   throughput: FixedPointValueSchema.optional(),
+  loss: FixedPointValueSchema.optional(),
   flowRate: FixedPointValueSchema.optional(),
   fieldState: z.enum(['macro', 'balanced', 'defensive']).optional(),
 });
@@ -50,6 +51,7 @@ export const EdgeMetricsSchema = z.object({
   coherence: FixedPointValueSchema,
   velocity: FixedPointValueSchema,
   policy: z.enum(['macro', 'balanced', 'defensive']),
+  loss: FixedPointValueSchema.optional(),
 });
 
 export type EdgeMetrics = z.infer<typeof EdgeMetricsSchema>;

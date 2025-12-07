@@ -65,7 +65,7 @@ export const PolicyConsole: React.FC<PolicyConsoleProps> = ({ state }) => {
               </span>
               <span className="edge-policy">{metrics.policy.toUpperCase()}</span>
               <span className="edge-metrics">
-                N={fromFixedPoint(metrics.negentropy).toFixed(3)} C={fromFixedPoint(metrics.coherence).toFixed(3)}
+                N={fromFixedPoint(metrics.negentropy).toFixed(5)} C={fromFixedPoint(metrics.coherence).toFixed(5)}
               </span>
             </div>
           );
