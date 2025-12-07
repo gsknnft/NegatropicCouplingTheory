@@ -2,17 +2,18 @@
 import { bigintToHex, hexToBigint } from './utils';
 
 export type FixedPoint = string;
-// Increase precision for smoother metric deltas
-export const FIXED_POINT_DECIMALS = 12;
-export const ZERO_FIXED_POINT: FixedPoint = '0x0';
+// Keep in sync with @gsknnft/bigint-buffer (engine emits 9-decimal fixed-point)
+export const FIXED_POINT_DECIMALS = 9;
+export const ZERO_FIXED_POINT: FixedPoint = '0';
 
 
-export function toFixedPoint(value: number, decimals: number = FIXED_POINT_DECIMALS): FixedPoint {
+export function toFixedPoint(value: number, decimals = FIXED_POINT_DECIMALS): FixedPoint {
   if (!Number.isFinite(value)) return ZERO_FIXED_POINT;
-  const scale = BigInt(10 ** decimals);
-  const scaled = BigInt(Math.round(value * Number(scale)));
+  const scaled = BigInt(Math.trunc(value * 10 ** decimals + (value >= 0 ? 0.5 : -0.5)));
   return scaled.toString();
 }
+
+
 
 export function fromFixedPoint(value?: string, decimals: number = FIXED_POINT_DECIMALS): number {
   if (!value) return 0;
@@ -21,8 +22,10 @@ export function fromFixedPoint(value?: string, decimals: number = FIXED_POINT_DE
   const isNegative = trimmed.startsWith('-');
   const body = isNegative ? trimmed.slice(1) : trimmed;
   const bigValue = isNegative ? -BigInt(body) : BigInt(body);
-  const scale = 10 ** decimals;
-  return Number(bigValue) / scale;
+  const scale = BigInt(10) ** BigInt(decimals);
+  const whole = bigValue / scale;
+  const frac = bigValue % scale;
+  return Number(whole) + Number(frac) / Number(scale);
 }
 
 export function addFixedPoint(a: FixedPoint, b: FixedPoint): FixedPoint {
@@ -36,7 +39,9 @@ export function subtractFixedPoint(a: FixedPoint, b: FixedPoint): FixedPoint {
 export function averageFixedPoint(values: FixedPoint[]): FixedPoint {
   if (values.length === 0) return ZERO_FIXED_POINT;
   const sum = values.reduce((acc, v) => acc + BigInt(v), 0n);
-  return (sum / BigInt(values.length)).toString();
+  const scale = BigInt(10) ** BigInt(FIXED_POINT_DECIMALS);
+  const avg = (sum * scale) / (BigInt(values.length) * scale); // keeps scale aligned
+  return avg.toString();
 }
 
 export function compareFixedPoint(a: FixedPoint, b: FixedPoint): number {

@@ -4,8 +4,8 @@ import {
   averageFixedPoint,
   compareFixedPoint,
   subtractFixedPoint,
-  toFixedPoint
-} from '@gsknnft/bigint-buffer';
+  toFixedPoint,
+} from '@gsknnft/bigint-buffer/conversion';
 
 /**
  * Negentropic Coupling Framework - TypeScript Simulation Module
@@ -96,7 +96,7 @@ export class NCFSimulation {
   private lastThroughput: number;
 
   constructor(options: SimulationOptions = {}) {
-    const { nodes = 5, edges = 10, scenario } = options;
+    const { nodes = 7, edges = 13, scenario } = options;
     this.nNodes = nodes;
     this.nEdges = Math.min(edges, nodes * nodes);
     this.edges = [];
@@ -255,7 +255,10 @@ export class NCFSimulation {
       const variationCoherence = this.clamp01(1 - totalVariation / 2);
 
       // Blend to avoid being stuck at 0/1 when spectral collapses
-      const blended = spectral * 0.6 + variationCoherence * 0.4;
+    const energyNorm = samples.reduce((a,b)=>a+b*b,0);
+    const spectralWeight = energyNorm > 1 ? 0.8 : 0.6;
+    const blended = spectral * spectralWeight + variationCoherence * (1 - spectralWeight);
+
       return this.clamp01(blended);
     } catch (error) {
       console.warn('Coherence calculation failed', { edge: key, error });
@@ -377,15 +380,14 @@ export class NCFSimulation {
     const avgNegentropy = averageFixedPoint(negentropies);
     const avgCoherence = averageFixedPoint(coherences);
 
-    let avgVelocity = ZERO_FIXED_POINT as string;
+    // Velocity: delta of negentropy per step (fixed-point-safe)
+    let avgVelocity = ZERO_FIXED_POINT;
     if (this.history.length > 0) {
       avgVelocity = subtractFixedPoint(
         avgNegentropy,
         this.history[this.history.length - 1].negentropy,
       );
     }
-    
-    // If velocity values are too large or small, consider increasing FIXED_POINT_DECIMALS in your conversion helpers
 
     const metrics: SimulationMetrics = {
       negentropy: avgNegentropy,
