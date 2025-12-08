@@ -275,58 +275,42 @@ export const ClassicalVsNegentropic: React.FC<ClassicalVsNegentropicProps> = ({
     ctx.stroke(); 
   };
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Classical Information Flow */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+    <div className="classical-vs-negentropic classical-compare">
+      <div className="chart-card">
         <canvas 
           ref={classicalCanvasRef}
-          width={600}
-          height={400}
+          width={560}
+          height={280}
           className="w-full rounded"
         />
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-1">
           <div className="text-sm text-gray-400">Classical Information Flow Analysis</div>
           <div className="text-xs text-gray-500">
-            • Throughput monitoring
-            <br />
-            • Moving averages (MA)
-            <br />
-            • Trend analysis
-            <br />
-            • Anomaly detection
+            • Throughput monitoring • Moving averages • Trend analysis • Anomaly detection
           </div>
-          {anomalies.filter(a => a.type === 'classical').slice(0, 3).map((anomaly, i) => (
+          {anomalies.filter(a => a.type === 'classical').slice(0, 2).map((anomaly, i) => (
             <div key={i} className="text-xs p-2 bg-gray-800 rounded">
               <span className={`font-bold ${getSeverityTextColor(anomaly.severity)}`}>  
                 {anomaly.severity.toUpperCase()}:
               </span>{' '}
               {anomaly.description}
             </div>
-
           ))}
         </div>
       </div>
-      {/* Negentropic Coupling Flow */}
-      <div className="bg-black border border-green-500 rounded-lg p-4">
+      <div className="chart-card">
         <canvas
-
           ref={negentropicCanvasRef}
-          width={600}
-          height={400}
+          width={560}
+          height={280}
           className="w-full rounded"
         />
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-1">
           <div className="text-sm text-green-400">Negentropic Coupling Flow Analysis</div>
           <div className="text-xs text-green-600">
-            • Field coherence patterns
-            <br />
-            • Negentropy analysis
-            <br />
-            • Phase lock detection
-            <br />
-            • Resonance anomalies
+            • Field coherence • Negentropy • Phase lock • Resonance anomalies
           </div>
-          {anomalies.filter(a => a.type === 'negentropic').slice(0, 3).map((anomaly, i) => (
+          {anomalies.filter(a => a.type === 'negentropic').slice(0, 2).map((anomaly, i) => (
             <div key={i} className="text-xs p-2 bg-green-950 border border-green-800 rounded">
               <span className={`font-bold ${getSeverityTextColor(anomaly.severity)}`}>
                 {anomaly.severity.toUpperCase()}:
@@ -334,12 +318,6 @@ export const ClassicalVsNegentropic: React.FC<ClassicalVsNegentropicProps> = ({
               {anomaly.description}
             </div>
           ))}
-
-          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <EntropyField history={simulationHistory} />
-            <NegentropyGauge metrics={currentMetrics} />
-            <CouplingMap state={currentState} />
-          </div> */}
         </div>
       </div>
     </div>

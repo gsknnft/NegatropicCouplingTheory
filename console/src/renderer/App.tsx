@@ -11,6 +11,7 @@ import { CouplingMap } from './components/CouplingMap';
 import { PolicyConsole } from './components/PolicyConsole';
 import { SimulationDiagnostics } from './components/SimulationDiagnostics';
 import { SignalScopePanel } from './components/SignalScopePanel';
+import { WaveletScalogram } from './components/WaveletScalogram';
 import './styles/theme.css';
 import { ClassicalVsNegentropic } from './components/ClassicalVsNegentropic';
 import { SimulationStateSchema } from '../shared/schemas';
@@ -491,6 +492,17 @@ export const App: React.FC = () => {
         <div className="panel panel-large">
           <h2>Signal Scope</h2>
           {state && <SignalScopePanel state={state} />}
+        </div>
+
+        <div className="panel panel-large">
+          <h2>Wavelet Scalogram</h2>
+          {state && (
+            <WaveletScalogram
+              state={state}
+              waveletName={waveletName}
+              levels={waveletLevel}
+            />
+          )}
         </div>
       </div>
       <div className="panel panel-large">

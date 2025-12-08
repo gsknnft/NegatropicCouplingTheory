@@ -384,6 +384,18 @@ button.active {
 .signal-scope-panel .dot.coh { background: #ffaa00; }
 .signal-scope-panel .dot.vel { background: #ff6b6b; }
 
+.classical-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+.classical-compare .chart-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px;
+}
+
 /* Negentropy Gauge */
 .negentropy-gauge {
   display: flex;

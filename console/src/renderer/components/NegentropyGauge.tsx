@@ -13,6 +13,8 @@ export const NegentropyGauge: React.FC<NegentropyGaugeProps> = ({ metrics }) => 
   const velocity = fromFixedPoint(metrics.velocity);
   const radius = 50;
   const center = { x: 60, y: 60 };
+  const tickCount = 5;
+  const ticks = Array.from({ length: tickCount + 1 }, (_, i) => i / tickCount);
 
   const getColorForValue = (value: number): string => {
     if (value > 0.8) return '#00ff88'; // High - green
@@ -75,10 +77,26 @@ export const NegentropyGauge: React.FC<NegentropyGaugeProps> = ({ metrics }) => 
         <div className="gauge-description">Bidirectional Alignment</div>
       </div>
       <svg width={120} height={120}>
-        <circle cx={60} cy={60} r={50} fill="#222" stroke="#444" strokeWidth={4} />
+        <circle cx={60} cy={60} r={50} fill="#1b1c20" stroke="#444" strokeWidth={4} />
+        {/* ticks */}
+        {ticks.map((t, idx) => {
+          const start = polarToCartesian(center.x, center.y, radius - 6, Math.PI * (1 - t));
+          const end = polarToCartesian(center.x, center.y, radius - 1, Math.PI * (1 - t));
+          return (
+            <line
+              key={idx}
+              x1={start.x}
+              y1={start.y}
+              x2={end.x}
+              y2={end.y}
+              stroke="#666"
+              strokeWidth={1}
+            />
+          );
+        })}
         {/* Arc for gauge background */}
-        <path d={describeArc(1)} fill="none" stroke="#555" strokeWidth={8} strokeLinecap="round" />
-        <path d={describeArc(negentropy)} fill="none" stroke={getColorForValue(negentropy)} strokeWidth={6} strokeLinecap="round" />
+        <path d={describeArc(1)} fill="none" stroke="#2a2b30" strokeWidth={10} strokeLinecap="round" />
+        <path d={describeArc(negentropy)} fill="none" stroke={getColorForValue(negentropy)} strokeWidth={8} strokeLinecap="round" />
         {/* Needle */}
         <line
           x1={60}
@@ -86,10 +104,12 @@ export const NegentropyGauge: React.FC<NegentropyGaugeProps> = ({ metrics }) => 
           x2={60 + 45 * Math.cos(Math.PI * (1 - negentropy))}
           y2={60 - 45 * Math.sin(Math.PI * (1 - negentropy))}
           stroke={getColorForValue(negentropy)}
-          strokeWidth={4}
+          strokeWidth={3}
+          strokeLinecap="round"
         />
+        <circle cx={60} cy={60} r={10} fill="#111" stroke="#777" strokeWidth={2} />
         {/* Center dot */}
-        <circle cx={60} cy={60} r={6} fill="#fff" />
+        <circle cx={60} cy={60} r={4} fill="#fff" />
       </svg>
       <div className="gauge-item">
         <div className="gauge-label">Entropy Velocity (v)</div>
