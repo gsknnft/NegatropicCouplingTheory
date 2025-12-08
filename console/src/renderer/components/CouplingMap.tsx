@@ -16,6 +16,7 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   negentropy: number;
   policy: string;
   loss: number;
+  regime?: 'chaos' | 'transitional' | 'coherent';
 }
 
 export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
@@ -61,6 +62,7 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
         negentropy,
         policy: edgeMetrics?.policy || 'balanced',
         loss: clampedLoss,
+        regime: edgeMetrics?.regime as D3Link['regime'],
       };
     });
 
@@ -98,14 +100,15 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
       .selectAll('line')
       .data(links)
       .enter().append('line')
-      .attr('stroke', d => 
-        d.policy === 'macro' ? '#00ff88' : 
-        d.policy === 'defensive' ? '#ff4444' : 
-        '#ffaa00'
-      )
+      .attr('stroke', d => {
+        if (d.regime === 'coherent') return '#00c6ff';
+        if (d.regime === 'chaos') return '#ff6b6b';
+        if (d.regime === 'transitional') return '#ffaa00';
+        return d.policy === 'macro' ? '#00ff88' : d.policy === 'defensive' ? '#ff4444' : '#ffaa00';
+      })
       .attr('stroke-width', d => (1 + d.negentropy * 3) * (1 - d.loss * 0.5))
       .attr('stroke-opacity', d => 0.25 + (1 - d.loss) * 0.55)
-      .attr('stroke-dasharray', d => d.loss > 0.35 ? '6 4' : '0')
+      .attr('stroke-dasharray', d => d.loss > 0.35 || d.regime === 'chaos' ? '6 4' : '0')
       .attr('marker-end', d => `url(#arrow-${d.policy})`);
 
     // Packet-like flow indicators
@@ -261,6 +264,18 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
         <div className="legend-item">
           <span className="legend-color" style={{ backgroundColor: '#888', border: '1px dashed #888' }}></span>
           <span>Dashed = high loss/attenuation</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#00c6ff' }}></span>
+          <span>Regime: Coherent</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#ffaa00' }}></span>
+          <span>Regime: Transitional</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#ff6b6b', border: '1px dashed #ff6b6b' }}></span>
+          <span>Regime: Chaos</span>
         </div>
       </div>
     </div>

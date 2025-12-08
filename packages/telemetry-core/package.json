@@ -1,0 +1,19 @@
+{
+  "name": "telemetry-core",
+  "version": "0.1.0",
+  "description": "Telemetry and event tracking for Negentropic operations",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "keywords": ["telemetry", "logging", "events", "lineage"],
+
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.38.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "5.9.3"
+  }
+}

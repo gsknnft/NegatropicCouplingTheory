@@ -77,6 +77,8 @@ export const App: React.FC = () => {
   const [scenarioPath, setScenarioPath] = useState<string>('../examples/entropy_mesh_example.json');
   const [chaosIntensity, setChaosIntensity] = useState<number>(0.12);
   const [entropyMode, setEntropyMode] = useState<'builtin_fft' | 'wavelet' | 'psqs' | 'qwave'>('builtin_fft');
+  const [waveletName, setWaveletName] = useState<string>('haar');
+  const [waveletLevel, setWaveletLevel] = useState<number>(3);
   const [availableScenarios, setAvailableScenarios] = useState([
     { label: 'Entropy Mesh Example', value: '../examples/entropy_mesh_example.json' },
     { label: 'NCF Python Model', value: '../models/NCF_simulation.py' },
@@ -203,6 +205,8 @@ export const App: React.FC = () => {
         scenarioPath,
         chaosIntensity,
         entropyAdapterMode: entropyMode,
+        waveletName,
+        waveletLevel,
       });
       if (response.success && response.state) {
         applySimulationState(response.state as SimulationStatePayload);
@@ -257,6 +261,8 @@ export const App: React.FC = () => {
         scenarioPath,
         chaosIntensity,
         entropyAdapterMode: entropyMode,
+        waveletName,
+        waveletLevel,
       });
       if (response.success && response.state) {
         applySimulationState(response.state as SimulationStatePayload);
@@ -390,6 +396,30 @@ export const App: React.FC = () => {
             <option value="qwave">QWave</option>
           </select>
         </label>
+        {(entropyMode === 'wavelet' || entropyMode === 'psqs' || entropyMode === 'qwave') && (
+          <>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
+              Wavelet
+              <select value={waveletName} onChange={e => setWaveletName(e.target.value)}>
+                <option value="haar">Haar</option>
+                <option value="db2">db2</option>
+                <option value="db4">db4</option>
+                <option value="sym2">sym2</option>
+              </select>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
+              Level
+              <input
+                type="number"
+                min={1}
+                max={8}
+                value={waveletLevel}
+                onChange={e => setWaveletLevel(Number(e.target.value))}
+                style={{ width: 60 }}
+              />
+            </label>
+          </>
+        )}
         <button onClick={stepSimulation} disabled={autoDemo}>
           Step Simulation
         </button>
@@ -463,7 +493,7 @@ export const App: React.FC = () => {
           {state && <SignalScopePanel state={state} />}
         </div>
       </div>
-      <div className="panel">
+      <div className="panel panel-large">
         <h2>Classical vs Negentropic</h2>
         {state && (() => {
           const coherenceArr = state.history.map(h => fromFixedPoint(h.coherence));

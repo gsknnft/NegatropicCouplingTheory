@@ -5,24 +5,23 @@
 /**
  * Generate mock signal data with realistic characteristics
  */
-export function generateMockSignal(efficiency: number): number[] {
+export function generateSignal(data: Float64Array): Float64Array {
   const size = 1024;
-  const signal = new Array(size);
-  
-  // Base frequency related to efficiency
-  const baseFreq = 0.05 + (efficiency / 100) * 0.15;
-  
+  // Use efficiency to determine base frequency, e.g., mean value mapped to a frequency range
+  const meanEfficiency = data.length > 0 ? data.reduce((a, b) => a + b, 0) / data.length : 0.5;
+  const baseFreq = 50 + meanEfficiency * 100; // Example: base frequency between 50 and 150 Hz
+
   // Add harmonics
   for (let i = 0; i < size; i++) {
     const t = i / size;
-    signal[i] = 
+    data[i] =
       Math.sin(2 * Math.PI * baseFreq * t) * 0.5 +
       Math.sin(2 * Math.PI * baseFreq * 2 * t) * 0.3 +
       Math.sin(2 * Math.PI * baseFreq * 3 * t) * 0.15 +
       (Math.random() - 0.5) * 0.1; // Add some noise
   }
-  
-  return signal;
+
+  return data;
 }
 
 /**

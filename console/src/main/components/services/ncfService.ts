@@ -21,6 +21,8 @@ export interface NCFParams {
   scenarioPath?: string;
   chaosIntensity?: number;
   entropyAdapterMode?: 'builtin_fft' | 'wavelet' | 'psqs' | 'qwave';
+  waveletName?: string;
+  waveletLevel?: number;
 }
 
 export interface NCFResponse<T = unknown> {
@@ -122,6 +124,7 @@ export class NCFService {
 
   private async getEntropyAdapter(
     mode?: NCFParams['entropyAdapterMode'],
+    opts?: { waveletName?: string; waveletLevel?: number },
   ): Promise<
     | {
         measureSpectrum: (samples: Float64Array) => number;
@@ -142,21 +145,27 @@ export class NCFService {
       return this.getFFTAdapter();
     }
     if (mode === 'psqs') {
-      // For now, reuse the FFT adapter; can be swapped with QTransform/QWave when available
-      return this.getFFTAdapter();
+      // Prefer wavelet-based entropy/coherence
+      const { measureWaveletEntropy, coherenceFromWavelet } = await import('../services/entropy/adapter');
+      return {
+        measureSpectrum: (samples: Float64Array) =>
+          measureWaveletEntropy(samples, opts?.waveletName, opts?.waveletLevel),
+        coherenceFromResonator: (samples: Float64Array) =>
+          coherenceFromWavelet(samples, opts?.waveletName, opts?.waveletLevel),
+      };
     }
     if (mode === 'qwave') {
       if (this.qwaveAdapter) return this.qwaveAdapter;
       try {
         const qwave = await import('@sigilnet/QWave');
-        const { coherenceFromResonator } = await import('../services/entropy/adapter');
+        const { measureWaveletEntropy, coherenceFromWavelet } = await import('../services/entropy/adapter');
         const waveletMeasure = (samples: Float64Array): number => {
           try {
             const data = Array.from(samples);
-            const level = Math.max(1, Math.floor(Math.log2(data.length)) - 2);
+            const level = opts?.waveletLevel ?? Math.max(1, Math.floor(Math.log2(data.length)) - 2);
             // wavedec signature: wavedec(signal, waveletName?, level?)
             const coeffs = (qwave as any).wavedec
-              ? (qwave as any).wavedec(data, 'haar', level)
+              ? (qwave as any).wavedec(data, opts?.waveletName ?? 'haar', level)
               : null;
             const flat: number[] = [];
             if (coeffs && Array.isArray(coeffs)) {
@@ -189,7 +198,12 @@ export class NCFService {
             return this.waveletCoherence(samples);
           }
         };
-        this.qwaveAdapter = { measureSpectrum: waveletMeasure, coherenceFromResonator };
+        this.qwaveAdapter = {
+          measureSpectrum: (s) =>
+            measureWaveletEntropy(Float64Array.from(s), opts?.waveletName, opts?.waveletLevel),
+          coherenceFromResonator: (s) =>
+            coherenceFromWavelet(Float64Array.from(s), opts?.waveletName, opts?.waveletLevel),
+        };
         return this.qwaveAdapter;
       } catch (err) {
         console.warn('QWave adapter unavailable; falling back to FFT', err);
@@ -381,7 +395,10 @@ export class NCFService {
 
   public async run(params: NCFParams = {}): Promise<SimulationState> {
     const scenario = await this.getScenario(params.scenarioPath);
-    const entropyAdapter = await this.getEntropyAdapter(params.entropyAdapterMode);
+    const entropyAdapter = await this.getEntropyAdapter(params.entropyAdapterMode, {
+      waveletName: params.waveletName,
+      waveletLevel: params.waveletLevel,
+    });
     this.simulation.reset({
       nodes: params.nodes ?? scenario.nodes,
       edges: params.edges ?? scenario.edges.length,
@@ -409,7 +426,10 @@ export class NCFService {
 
   public async reset(params: NCFParams = {}): Promise<SimulationState> {
     const scenario = await this.getScenario(params.scenarioPath);
-    const entropyAdapter = await this.getEntropyAdapter(params.entropyAdapterMode);
+    const entropyAdapter = await this.getEntropyAdapter(params.entropyAdapterMode, {
+      waveletName: params.waveletName,
+      waveletLevel: params.waveletLevel,
+    });
     this.simulation.reset({
       nodes: params.nodes ?? scenario.nodes,
       edges: params.edges ?? scenario.edges.length,
