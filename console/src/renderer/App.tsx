@@ -9,6 +9,8 @@ import { EntropyField } from './components/EntropyField';
 import { NegentropyGauge } from './components/NegentropyGauge';
 import { CouplingMap } from './components/CouplingMap';
 import { PolicyConsole } from './components/PolicyConsole';
+import { SimulationDiagnostics } from './components/SimulationDiagnostics';
+import { SignalScopePanel } from './components/SignalScopePanel';
 import './styles/theme.css';
 import { ClassicalVsNegentropic } from './components/ClassicalVsNegentropic';
 import { SimulationStateSchema } from '../shared/schemas';
@@ -73,6 +75,8 @@ export const App: React.FC = () => {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scenarioPath, setScenarioPath] = useState<string>('../examples/entropy_mesh_example.json');
+  const [chaosIntensity, setChaosIntensity] = useState<number>(0.12);
+  const [entropyMode, setEntropyMode] = useState<'builtin_fft' | 'wavelet' | 'psqs' | 'qwave'>('builtin_fft');
   const [availableScenarios, setAvailableScenarios] = useState([
     { label: 'Entropy Mesh Example', value: '../examples/entropy_mesh_example.json' },
     { label: 'NCF Python Model', value: '../models/NCF_simulation.py' },
@@ -153,7 +157,7 @@ export const App: React.FC = () => {
   // Initialize simulation on mount
   useEffect(() => {
     initializeSimulation();
-  }, [scenarioPath]);
+  }, [scenarioPath, chaosIntensity, entropyMode]);
 
   // Auto-demo mode
   useEffect(() => {
@@ -193,7 +197,13 @@ export const App: React.FC = () => {
     setErrorMessage(null);
     setScenarioMeta(null);
     try {
-      const response = await window.ncf.runSimulation({ nodes: 5, edges: 10, scenarioPath });
+      const response = await window.ncf.runSimulation({
+        nodes: 5,
+        edges: 10,
+        scenarioPath,
+        chaosIntensity,
+        entropyAdapterMode: entropyMode,
+      });
       if (response.success && response.state) {
         applySimulationState(response.state as SimulationStatePayload);
       } else {
@@ -241,7 +251,13 @@ export const App: React.FC = () => {
         clearInterval(intervalId);
         setIntervalId(null);
       }
-      const response = await window.ncf.reset({ nodes: 5, edges: 10, scenarioPath });
+      const response = await window.ncf.reset({
+        nodes: 5,
+        edges: 10,
+        scenarioPath,
+        chaosIntensity,
+        entropyAdapterMode: entropyMode,
+      });
       if (response.success && response.state) {
         applySimulationState(response.state as SimulationStatePayload);
       } else {
@@ -350,6 +366,30 @@ export const App: React.FC = () => {
           style={{ marginRight: 16 }}
           onChange={handleFileUpload}
         />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
+          Chaos
+          <input
+            type="range"
+            min={0}
+            max={0.5}
+            step={0.01}
+            value={chaosIntensity}
+            onChange={e => setChaosIntensity(Number(e.target.value))}
+          />
+          <span style={{ minWidth: 48, textAlign: 'right' }}>{chaosIntensity.toFixed(2)}</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
+          Spectrum
+          <select
+            value={entropyMode}
+            onChange={e => setEntropyMode(e.target.value as 'builtin_fft' | 'wavelet' | 'psqs' | 'qwave')}
+          >
+            <option value="builtin_fft">FFT</option>
+            <option value="wavelet">Wavelet</option>
+            <option value="psqs">PSQS</option>
+            <option value="qwave">QWave</option>
+          </select>
+        </label>
         <button onClick={stepSimulation} disabled={autoDemo}>
           Step Simulation
         </button>
@@ -405,6 +445,22 @@ export const App: React.FC = () => {
         <div className="panel">
           <h2>Scenario Diagnostics</h2>
           <ScenarioDiagnostics metadata={scenarioMeta} />
+        </div>
+
+        <div className="panel">
+          <h2>Simulation Diagnostics</h2>
+          {state && (
+            <SimulationDiagnostics
+              state={state}
+              chaosIntensity={chaosIntensity}
+              entropyAdapterMode={entropyMode}
+            />
+          )}
+        </div>
+
+        <div className="panel panel-large">
+          <h2>Signal Scope</h2>
+          {state && <SignalScopePanel state={state} />}
         </div>
       </div>
       <div className="panel">

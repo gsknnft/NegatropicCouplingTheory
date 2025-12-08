@@ -29,6 +29,7 @@ export default defineConfig({
         'electron',
         '@sigilnet/fft-legacy',
         '@gsknnft/bigint-buffer',
+        "@sigilnet/QWave",
         'path',
         'fs'
       ],

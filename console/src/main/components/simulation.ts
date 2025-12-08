@@ -42,6 +42,8 @@ export interface SimulationMetrics {
   time: number;
   throughput?: string;
   loss?: string;
+  regime?: 'chaos' | 'transitional' | 'coherent';
+  entropyVelocity?: string;
 }
 
 export interface EdgeMetrics {
@@ -51,6 +53,7 @@ export interface EdgeMetrics {
   velocity: string;
   policy: 'macro' | 'defensive' | 'balanced';
   loss?: string;
+  regime?: 'chaos' | 'transitional' | 'coherent';
 }
 
 export interface SimulationState {
@@ -77,6 +80,9 @@ export interface SimulationOptions {
   chaosIntensity?: number;
   entropyAdapter?: {
     measureSpectrum: (samples: Float64Array) => number;
+    coherenceFromResonator?: (
+      samples: Float64Array,
+    ) => { coherence: number; regime: 'chaos' | 'transitional' | 'coherent'; entropyVelocity: number };
   };
 }
 
@@ -250,7 +256,14 @@ export class NCFSimulation {
       return 0;
     }
     try {
-      const spectralSource = this.entropyAdapter?.measureSpectrum
+      if (this.entropyAdapter?.coherenceFromResonator) {
+        const { coherence } = this.entropyAdapter.coherenceFromResonator(
+          Float64Array.from(samples),
+        );
+        return this.clamp01(coherence);
+      }
+
+      const spectralSource = this.entropyAdapter
         ? this.entropyAdapter.measureSpectrum(Float64Array.from(samples))
         : deriveCoherence(Float64Array.from(samples));
       const spectral = this.clamp01(
@@ -385,9 +398,30 @@ export class NCFSimulation {
     const negentropies = this.edges.map((edge) =>
       toFixedPoint(this.negentropicIndex(edge)),
     );
-    const coherences = this.edges.map((edge) =>
-      toFixedPoint(this.coherence(edge)),
-    );
+    const resonatorOutputs =
+      this.entropyAdapter?.coherenceFromResonator
+        ? this.entropyAdapter
+        : undefined;
+
+    let avgRegime: 'chaos' | 'transitional' | 'coherent' | undefined;
+    let avgEntropyVelocity = ZERO_FIXED_POINT;
+
+    const coherences = this.edges.map((edge, idx) => {
+      if (resonatorOutputs?.coherenceFromResonator) {
+        const key = this.edgeKey(edge);
+        const probs = this.probabilities.get(key) ?? [];
+        const r = resonatorOutputs.coherenceFromResonator(
+          Float64Array.from(probs),
+        );
+        // Keep running regime/entropy velocity average
+        if (idx === 0) {
+          avgRegime = r.regime;
+          avgEntropyVelocity = toFixedPoint(r.entropyVelocity);
+        }
+        return toFixedPoint(r.coherence);
+      }
+      return toFixedPoint(this.coherence(edge));
+    });
 
     const avgNegentropy = averageFixedPoint(negentropies);
     const avgCoherence = averageFixedPoint(coherences);
@@ -408,6 +442,8 @@ export class NCFSimulation {
       time: this.time,
       throughput: toFixedPoint(this.lastThroughput),
       loss: toFixedPoint(this.lastLossRatio),
+      regime: avgRegime,
+      entropyVelocity: avgEntropyVelocity,
     };
 
     // Log state
@@ -424,11 +460,25 @@ export class NCFSimulation {
     const edgeMetrics = new Map<string, EdgeMetrics>();
 
     const meshVelocity = this.entropyVelocity();
+    const resonatorOutputs =
+      typeof this.entropyAdapter?.coherenceFromResonator === 'function' &&
+      typeof this.entropyAdapter?.measureSpectrum === 'function'
+        ? this.entropyAdapter
+        : undefined;
 
     for (const edge of this.edges) {
       const key = this.edgeKey(edge);
       const negentropy = toFixedPoint(this.negentropicIndex(edge));
-      const coherence = toFixedPoint(this.coherence(edge));
+      let coherence = toFixedPoint(this.coherence(edge));
+      let regime: EdgeMetrics['regime'] | undefined;
+      if (resonatorOutputs?.coherenceFromResonator) {
+        const probs = this.probabilities.get(key) ?? [];
+        const r = resonatorOutputs.coherenceFromResonator(
+          Float64Array.from(probs),
+        );
+        coherence = toFixedPoint(r.coherence);
+        regime = r.regime;
+      }
       const lossRatio = this.edgeLosses.get(key) ?? this.lastLossRatio;
       edgeMetrics.set(key, {
         entropy: toFixedPoint(this.entropyField(edge)),
@@ -437,6 +487,7 @@ export class NCFSimulation {
         velocity: meshVelocity,
         policy: this.policyFromNegentropy(negentropy),
         loss: toFixedPoint(lossRatio),
+        regime,
       });
     }
 

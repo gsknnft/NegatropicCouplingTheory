@@ -32,13 +32,15 @@ export class Entropy {
 
   /**
    * Spectral entropy: measure entropy of FFT magnitudes.
+   * Uses computeFFT to avoid in/out buffer aliasing issues.
    */
   static measureSpectrum(signal: Float64Array): number {
     const fft = new FFT(signal);
-    const complex = fft.toComplexArray(signal);
-    fft.realTransform(complex, complex); // forward transform
-    const mags: Float64Array = complex.map((v: number) => Math.abs(v));
-
+    const input = fft.toComplexArray(signal);
+    const output = new Float64Array(input.length);
+    // realTransform requires distinct input/output buffers
+    fft.realTransform(output, input);
+    const mags: Float64Array = output.map((v: number) => Math.abs(v));
     const sum = mags.reduce((a, b) => a + b, 0);
     if (sum === 0) return 0;
 
@@ -100,12 +102,14 @@ static entropy(signal: number[]): number {
     const N = samples.length;
     if (N <= 2) return 0;
     const windowed = applyHannWindow(samples, false) as Float64Array;
-    const complex: Complex[] = computeFFT(windowed);
+    const complex: Complex[] = computeFFT(Float64Array.from(windowed));
     for (let i = 0; i < complex.length; i++) {
       complex[i].magnitude = Math.sqrt(complex[i].real ** 2 + complex[i].imag ** 2);
     }
     const magnitude = complex.map(c => c.magnitude);
-    const probs = magnitude.map(m => m / magnitude.reduce((a, b) => a + b, 0));
+    const total = magnitude.reduce((a, b) => a + b, 0);
+    if (total <= 0) return 0;
+    const probs = magnitude.map(m => m / total);
     return -probs.reduce((sum, p) => sum + (p * Math.log2(p || 1e-10)), 0) / Math.log2(magnitude.length);
   }
 

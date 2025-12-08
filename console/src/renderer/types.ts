@@ -36,6 +36,8 @@ export interface NCFParams {
   nodes?: number;
   edges?: number;
   scenarioPath?: string;
+  chaosIntensity?: number;
+  entropyAdapterMode?: 'builtin_fft' | 'wavelet' | 'psqs' | 'qwave';
 }
 
 export interface SimulationState {
