@@ -41,7 +41,6 @@ export interface NCFParams {
   waveletName?: string;
   waveletLevel?: number;
 }
-
 export interface SimulationState {
   nodes: number;
   edges: Edge[];

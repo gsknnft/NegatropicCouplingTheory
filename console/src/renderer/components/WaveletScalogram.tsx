@@ -99,12 +99,12 @@ export const WaveletScalogram: React.FC<WaveletScalogramProps> = ({
     });
 
     // Regime overlay
-    if (state.meshMetrics.regime) {
+    if (state.meshMetrics.fieldState) {
       ctx.fillStyle = 'rgba(255,255,255,0.1)';
       ctx.fillRect(0, 0, 120, 40);
       ctx.fillStyle = '#fff';
       ctx.font = '12px monospace';
-      ctx.fillText(`Regime: ${state.meshMetrics.regime}`, 8, 20);
+      ctx.fillText(`Regime: ${state.meshMetrics.fieldState}`, 8, 20);
     }
   }, [state, waveletName, levels]);
 
