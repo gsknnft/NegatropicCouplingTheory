@@ -19,6 +19,7 @@ export interface NCFParams {
   nodes?: number;
   edges?: number;
   scenarioPath?: string;
+  chaosIntensity?: number;
 }
 
 export interface NCFResponse<T = unknown> {
@@ -256,6 +257,7 @@ export class NCFService {
       nodes: params.nodes ?? scenario.nodes,
       edges: params.edges ?? scenario.edges.length,
       scenario,
+      chaosIntensity: params.chaosIntensity,
     });
     const steps = Math.max(1, params.steps ?? 1);
     for (let i = 0; i < steps; i++) {
@@ -281,6 +283,7 @@ export class NCFService {
       nodes: params.nodes ?? scenario.nodes,
       edges: params.edges ?? scenario.edges.length,
       scenario,
+      chaosIntensity: params.chaosIntensity,
     });
     const primeSteps = Math.max(1, params.steps ?? 1);
     for (let i = 0; i < primeSteps; i++) {

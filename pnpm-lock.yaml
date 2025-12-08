@@ -10,6 +10,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@sigilnet/QWave':
+        specifier: link:../SigilNet/packages/QWave
+        version: link:../SigilNet/packages/QWave
     devDependencies:
       '@gsknnft/bigint-buffer':
         specifier: link:../bigint-buffer

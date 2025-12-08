@@ -6,6 +6,9 @@
         "console/**/*",
         "packages/*/**"
     ],
+    "dependencies": {
+        "@sigilnet/QWave": "link:../SigilNet/packages/QWave"
+    },
     "devDependencies": {
         "rimraf": "^6.1.0",
         "@gsknnft/bigint-buffer": "link:../bigint-buffer",

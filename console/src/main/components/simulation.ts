@@ -5,7 +5,7 @@ import {
   compareFixedPoint,
   subtractFixedPoint,
   toFixedPoint,
-} from '@gsknnft/bigint-buffer/conversion';
+} from '@gsknnft/bigint-buffer';
 
 /**
  * Negentropic Coupling Framework - TypeScript Simulation Module
@@ -74,6 +74,10 @@ export interface SimulationOptions {
   nodes?: number;
   edges?: number;
   scenario?: SimulationScenario;
+  chaosIntensity?: number;
+  entropyAdapter?: {
+    measureSpectrum: (samples: Float64Array) => number;
+  };
 }
 
 const MACRO_THRESHOLD = toFixedPoint(0.8);
@@ -94,6 +98,8 @@ export class NCFSimulation {
   private edgeLosses: Map<string, number>;
   private lastLossRatio: number;
   private lastThroughput: number;
+  private chaosIntensity: number;
+  private entropyAdapter?: SimulationOptions['entropyAdapter'];
 
   constructor(options: SimulationOptions = {}) {
     const { nodes = 7, edges = 13, scenario } = options;
@@ -108,6 +114,8 @@ export class NCFSimulation {
     this.edgeLosses = new Map();
     this.lastLossRatio = 0;
     this.lastThroughput = 1;
+    this.chaosIntensity = options.chaosIntensity ?? 0.08;
+    this.entropyAdapter = options.entropyAdapter;
 
     this.initializeMesh();
   }
@@ -242,9 +250,11 @@ export class NCFSimulation {
       return 0;
     }
     try {
-      const spectralCoherence = deriveCoherence(Float64Array.from(samples));
+      const spectralSource = this.entropyAdapter?.measureSpectrum
+        ? this.entropyAdapter.measureSpectrum(Float64Array.from(samples))
+        : deriveCoherence(Float64Array.from(samples));
       const spectral = this.clamp01(
-        Number.isFinite(spectralCoherence) ? spectralCoherence : 0,
+        Number.isFinite(spectralSource) ? spectralSource : 0,
       );
 
       // Fallback: variation-based coherence (smoothness of distribution)
@@ -360,9 +370,11 @@ export class NCFSimulation {
       const peak = peaks.get(key);
       const reinforcement =
         peak && incoming.length > 0 ? 0.05 * peak.negentropy : 0;
+      const chaos = this.chaosIntensity;
+      const jitter = chaos * (Math.random() * 0.02 + 0.005);
       const newProbs = probs.map((p, i) => {
         const bias = peak?.idx === i ? reinforcement : 0;
-        return p * 0.82 + incoming[i] + bias + Math.random() * 0.01;
+        return p * 0.8 + incoming[i] + bias + Math.random() * jitter;
       });
       const sum = newProbs.reduce((a, b) => a + b, 0);
       this.probabilities.set(key, newProbs.map((p) => (sum > 0 ? p / sum : p)));
@@ -459,6 +471,12 @@ export class NCFSimulation {
     if (typeof edges === 'number') this.nEdges = edges;
     if ('scenario' in options) {
       this.scenario = options.scenario;
+    }
+    if ('chaosIntensity' in options && typeof options.chaosIntensity === 'number') {
+      this.chaosIntensity = options.chaosIntensity;
+    }
+    if ('entropyAdapter' in options) {
+      this.entropyAdapter = options.entropyAdapter;
     }
     this.edges = [];
     this.probabilities.clear();

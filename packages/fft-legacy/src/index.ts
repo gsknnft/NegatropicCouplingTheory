@@ -1,5 +1,6 @@
 // index.ts
 export type { Phasors } from './types/types';
+export type { Complex } from './types/types';
 export { FFT, fftFunc, forwardMagnitudes, deriveCoherence } from './fft';
 export { dft } from './dft';
 export { idft as ifft } from './idft';
