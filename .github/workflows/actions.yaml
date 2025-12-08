@@ -57,9 +57,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
 
-      - name: Build native bindings
-        run: pnpm run rebuild
-
       - name: Lint
         run: pnpm run lint
 
