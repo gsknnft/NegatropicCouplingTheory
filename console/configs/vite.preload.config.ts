@@ -19,7 +19,7 @@ export default defineConfig({
         ...builtinModules.map(m => `node:${m}`), // Node-prefixed
         'electron',
         '@gsknnft/bigint-buffer',
-        "@sigilnet/QWave",
+        "@sigilnet/qwave",
         'path',
         'fs'
       ],

@@ -27,9 +27,9 @@ export default defineConfig({
         ...builtinModules,                 // Node core modules
         ...builtinModules.map(m => `node:${m}`), // Node-prefixed
         'electron',
-        '@sigilnet/fft-legacy',
+        '@sigilnet/fft-ts',
         '@gsknnft/bigint-buffer',
-        "@sigilnet/QWave",
+        "@sigilnet/qwave",
         'path',
         'fs'
       ],
@@ -43,6 +43,7 @@ export default defineConfig({
     alias: {
       '@app': path.resolve(__dirname, '../src/app'),
       '@': path.resolve(__dirname, '../src'),
+      '@sigilnet/qwave': path.resolve(__dirname, '../../sigilnet/packages/Qwave/index.ts'),
     },
   },
   

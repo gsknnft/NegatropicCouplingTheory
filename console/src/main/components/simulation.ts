@@ -1,4 +1,4 @@
-import { deriveCoherence } from '@sigilnet/fft-legacy';
+import { deriveCoherence } from '@sigilnet/fft-ts';
 import {
   ZERO_FIXED_POINT,
   averageFixedPoint,
@@ -40,6 +40,7 @@ export interface SimulationMetrics {
   coherence: string;
   velocity: string;
   time: number;
+  entropy: string;
   throughput?: string;
   loss?: string;
   regime?: 'chaos' | 'transitional' | 'coherent';
@@ -395,6 +396,9 @@ export class NCFSimulation {
   }
 
   public evolve(): SimulationMetrics {
+    const edgeEntropyValues = this.edges.map((edge) =>
+      toFixedPoint(this.entropyField(edge)),
+    );
     const negentropies = this.edges.map((edge) =>
       toFixedPoint(this.negentropicIndex(edge)),
     );
@@ -423,6 +427,7 @@ export class NCFSimulation {
       return toFixedPoint(this.coherence(edge));
     });
 
+    const avgEntropy = averageFixedPoint(edgeEntropyValues);
     const avgNegentropy = averageFixedPoint(negentropies);
     const avgCoherence = averageFixedPoint(coherences);
 
@@ -440,6 +445,7 @@ export class NCFSimulation {
       coherence: avgCoherence,
       velocity: avgVelocity,
       time: this.time,
+      entropy: avgEntropy,
       throughput: toFixedPoint(this.lastThroughput),
       loss: toFixedPoint(this.lastLossRatio),
       regime: avgRegime,
@@ -499,6 +505,7 @@ export class NCFSimulation {
             coherence: ZERO_FIXED_POINT,
             velocity: ZERO_FIXED_POINT,
             time: 0,
+            entropy: ZERO_FIXED_POINT,
           };
 
     return {

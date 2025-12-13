@@ -77,7 +77,7 @@ async function main() {
   if (options.clean && fs.existsSync(paths.distPath)) {
     logger.info("Cleaning existing build output...");
     try {
-      execStrict(`pnpm dlx rimraf "${paths.distPath}"`, {}, 'clean');
+      execStrict(`pnpm rimraf "${paths.distPath}"`, {}, 'clean');
       logger.success("Build directory cleaned");
     } catch (error) {
       logger.warn(`Failed to clean build directory: ${error}`);

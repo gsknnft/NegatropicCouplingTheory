@@ -13,7 +13,7 @@ import {
   findDominantFrequency,
   extractHarmonics,
 } from '../../../shared';
-import {FFT} from '@sigilnet/fft-legacy';
+import {FFT} from '@sigilnet/fft-ts';
 
 /**
  * Generate signal frame using real QTransform plugin

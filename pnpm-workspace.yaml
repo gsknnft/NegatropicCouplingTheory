@@ -1,6 +1,5 @@
 packages:
   - console/**
-  - packages/fft-legacy/**
 
 ignoredBuiltDependencies:
   - inotify

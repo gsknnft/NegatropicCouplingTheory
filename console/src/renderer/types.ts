@@ -15,6 +15,7 @@ export type {
   SimulationStatePayload,
   AnomalyDetection,
 } from '../shared/schemas';
+// import { QWormholeClient, QWormholeServer, NativeTcpClient, runBench } from '@gsknnft/qwormhole';
 
 export type NCFMode = 'macro' | 'defensive' | 'balanced';
 
@@ -41,6 +42,7 @@ export interface NCFParams {
   waveletName?: string;
   waveletLevel?: number;
 }
+
 export interface SimulationState {
   nodes: number;
   edges: Edge[];
@@ -68,6 +70,9 @@ declare global {
       reset: (params: NCFParams) => Promise<NCFResponse<SimulationStatePayload>>;
       uploadScenario: (payload: { name: string; type: string; data: ArrayBuffer; saveToFile?: boolean }) => Promise<NCFResponse<{ path?: string; name?: string; checksum?: string; size?: number }>>;
     } & NCFDiagnostics;
+    transportBench?: {
+      runBench: (mode?: string) => Promise<any>;
+    };
     quantum: {
       platform: string;
       version: string;

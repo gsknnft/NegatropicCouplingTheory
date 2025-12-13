@@ -189,18 +189,18 @@ export const CouplingMap: React.FC<CouplingMapProps> = ({ state }) => {
           const source = d.source as D3Node;
           const target = d.target as D3Node;
           const sx = source.x ?? width / 2;
-          const sy = source.y ?? height / 2;
+          // const sy = source.y ?? height / 2;
           const tx = target.x ?? width / 2;
-          const ty = target.y ?? height / 2;
+          // const ty = target.y ?? height / 2;
           return sx + (tx - sx) * progress;
         })
         .attr('cy', (d, i) => {
           const progress = packetProgress[i];
           const source = d.source as D3Node;
           const target = d.target as D3Node;
-          const sx = source.x ?? width / 2;
+          // const sx = source.x ?? width / 2;
           const sy = source.y ?? height / 2;
-          const tx = target.x ?? width / 2;
+          // const tx = target.x ?? width / 2;
           const ty = target.y ?? height / 2;
           return sy + (ty - sy) * progress;
         });

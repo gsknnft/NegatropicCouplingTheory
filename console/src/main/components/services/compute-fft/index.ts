@@ -1,4 +1,4 @@
-import { FFT } from "@sigilnet/fft-legacy";
+import { FFT } from "@sigilnet/fft-ts";
 
 export interface Complex {
   real: number;

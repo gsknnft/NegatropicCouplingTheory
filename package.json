@@ -6,6 +6,15 @@
         "console/**/*",
         "packages/*/**"
     ],
+    "scripts": {
+        "build": "pnpm -r run build",
+        "build:console": "pnpm --filter negentropic-console build",
+        "dev": "pnpm --filter negentropic-console dev:console",
+        "lint": "pnpm -r run lint",
+        "lint:fix": "pnpm -r run lint:fix",
+        "typecheck": "pnpm -r run type-check",
+        "test": "pnpm -r run test"
+    },
     "dependencies": {
         "@sigilnet/QWave": "link:../SigilNet/packages/QWave"
     },
@@ -14,6 +23,7 @@
         "chalk": "5.6.2",
         "telemetry-core": "link:./packages/telemetry-core",
         "@gsknnft/bigint-buffer": "link:../bigint-buffer",
+        "@sigilnet/qwave": "link:../SigilNet/packages/QWave",
         "@gsknnft/qwormhole": "link:../SigilNet/packages/QWormhole",
         "@types/node": "24.10.1",
         "typescript": "^5.2.2"

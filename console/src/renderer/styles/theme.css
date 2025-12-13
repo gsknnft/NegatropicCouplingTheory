@@ -396,6 +396,34 @@ button.active {
   padding: 12px;
 }
 
+.transport-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.transport-diagnostics .transport-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.transport-diagnostics .transport-header,
+.transport-diagnostics .transport-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 2fr;
+  gap: 6px;
+  font-size: 12px;
+}
+.transport-diagnostics .transport-header {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.transport-diagnostics .transport-row {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+}
+
 /* Negentropy Gauge */
 .negentropy-gauge {
   display: flex;

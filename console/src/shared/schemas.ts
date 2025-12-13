@@ -31,12 +31,35 @@ const FixedPointValueSchema = z
   .string()
   .regex(FIXED_POINT_PATTERN, 'Invalid fixed-point value');
 
+
+export const SignalMetricsSchema = z.object({
+  negentropy: z.number(),
+  coherence: z.number(),
+  velocity: z.number(),
+  ts: z.number(),
+  entropy: z.number(),
+  phase: z.number().min(0),
+  dominantHz: z.number(),
+  harmonics: z.array(z.number()),
+  magnitude: z.array(z.number()),
+  throughput: z.number().optional(),
+  loss: z.number().optional(),
+  flowRate: z.number().optional(),
+  fieldState: z.enum(['macro', 'balanced', 'defensive']).optional(),
+});
+
+export type SignalMetrics = z.infer<typeof SignalMetricsSchema>;
+
 export const SimulationMetricsSchema = z.object({
   negentropy: FixedPointValueSchema,
   coherence: FixedPointValueSchema,
   velocity: FixedPointValueSchema,
   time: z.number(),
-  entropy: FixedPointValueSchema.optional(),
+  entropy: FixedPointValueSchema,
+  phase: FixedPointValueSchema.optional(),
+  dominantHz: FixedPointValueSchema.optional(),
+  harmonics: z.array(FixedPointValueSchema).optional(),
+  magnitude: z.array(z.array(FixedPointValueSchema)).optional(),
   throughput: FixedPointValueSchema.optional(),
   loss: FixedPointValueSchema.optional(),
   flowRate: FixedPointValueSchema.optional(),
@@ -52,6 +75,7 @@ export const EdgeMetricsSchema = z.object({
   velocity: FixedPointValueSchema,
   policy: z.enum(['macro', 'balanced', 'defensive']),
   loss: FixedPointValueSchema.optional(),
+  regime: z.enum(['chaos', 'transitional', 'coherent']).optional(),
 });
 
 export type EdgeMetrics = z.infer<typeof EdgeMetricsSchema>;

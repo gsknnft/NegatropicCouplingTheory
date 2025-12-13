@@ -1,11 +1,12 @@
 // packages/QWave/entropy.ts
 
 import { randomBytes } from "crypto";
-import {FFT} from "@sigilnet/fft-legacy";
+import {FFT} from "@sigilnet/fft-ts";
 import { applyHannWindow } from "../windows";
 import { Complex, computeFFT } from "../compute-fft";
+import { Entropy as Ent } from "@sigilnet/qwave";
 
-export class Entropy {
+export class Entropy extends Ent {
   static negentropicIndex(coherence:number, H:number){return coherence/(H+1e-9);}
 
   /**

@@ -7,14 +7,19 @@
 function applyHannWindow(
   input: Float64Array,
   inPlace = false
-): Float64Array | void {
+): Float64Array {
   const N = input.length;
+  if (N <= 2) {
+    if (inPlace) return padToThePowerOfTwo(input);
+    return padToThePowerOfTwo(input);
+  }
 
   if (inPlace) {
     for (let n = 0; n < N; n++) {
       const w = 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)));
       input[n] *= w;
     }
+    return input;
   } else {
     const output = new Float64Array(N);
     for (let n = 0; n < N; n++) {
@@ -39,6 +44,19 @@ export { applyHannWindow, hannWindowCoefficients };
 
 
 
+/**
+ * Pads a Float64Array to the next power of two length with zeros.
+ * @param input - the input Float64Array
+ * @returns a new Float64Array padded to the next power of two length
+ */
+function padToThePowerOfTwo(input: Float64Array): Float64Array {
+  const N = input.length;
+  const nextPow2 = Math.pow(2, Math.ceil(Math.log2(N)));
+  if (N === nextPow2) return new Float64Array(input); // Already power of two
+  const padded = new Float64Array(nextPow2);
+  padded.set(input);
+  return padded;
+}
 // Apply: elementwise multiplication (can use for samples, frames, overlap-add, etc.)
 
 // const samples = new Float64Array([/* ... */]);

@@ -50,6 +50,9 @@ interface NCFPreloadAPI {
   reset: (params: NCFParams) => Promise<NCFResponse>;
   uploadScenario: (payload: { name: string; type: string; data: ArrayBuffer; saveToFile?: boolean }) => Promise<NCFResponse>;
 }
+interface TransportBenchAPI {
+  runBench: (mode?: string) => Promise<any>;
+}
 
 interface UploadScenarioPayload {
   name: string;
@@ -92,5 +95,8 @@ const ncfPreloadAPI: NCFPreloadAPI = {
 };
 
 contextBridge.exposeInMainWorld('ncf', ncfPreloadAPI);
+contextBridge.exposeInMainWorld('transportBench', {
+  runBench: (mode: string = 'all') => ipcRenderer.invoke('transport-bench:run', mode),
+} as TransportBenchAPI);
 
 console.log('Preload script loaded with secure context isolation');

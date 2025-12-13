@@ -13,6 +13,7 @@ import {
   getUploadedScenarioMetadata,
 } from '../uploadStore';
 import { execSync } from 'node:child_process';
+import { measureWaveletEntropy, coherenceFromWavelet } from '../services/entropy/adapter';
 
 export interface NCFParams {
   steps?: number;
@@ -146,7 +147,6 @@ export class NCFService {
     }
     if (mode === 'psqs') {
       // Prefer wavelet-based entropy/coherence
-      const { measureWaveletEntropy, coherenceFromWavelet } = await import('../services/entropy/adapter');
       return {
         measureSpectrum: (samples: Float64Array) =>
           measureWaveletEntropy(samples, opts?.waveletName, opts?.waveletLevel),
@@ -157,47 +157,7 @@ export class NCFService {
     if (mode === 'qwave') {
       if (this.qwaveAdapter) return this.qwaveAdapter;
       try {
-        const qwave = await import('@sigilnet/QWave');
         const { measureWaveletEntropy, coherenceFromWavelet } = await import('../services/entropy/adapter');
-        const waveletMeasure = (samples: Float64Array): number => {
-          try {
-            const data = Array.from(samples);
-            const level = opts?.waveletLevel ?? Math.max(1, Math.floor(Math.log2(data.length)) - 2);
-            // wavedec signature: wavedec(signal, waveletName?, level?)
-            const coeffs = (qwave as any).wavedec
-              ? (qwave as any).wavedec(data, opts?.waveletName ?? 'haar', level)
-              : null;
-            const flat: number[] = [];
-            if (coeffs && Array.isArray(coeffs)) {
-              coeffs.forEach((c: any) => {
-                if (Array.isArray(c)) {
-                  c.forEach((v) => flat.push(typeof v === 'number' ? v : 0));
-                } else if (typeof c === 'number') {
-                  flat.push(c);
-                }
-              });
-            } else if (coeffs && typeof coeffs === 'object') {
-              Object.values(coeffs).forEach((v: any) => {
-                if (Array.isArray(v)) {
-                  v.forEach((x) => flat.push(typeof x === 'number' ? x : 0));
-                }
-              });
-            }
-            const energy = flat.map((v) => v * v);
-            const total = energy.reduce((acc, v) => acc + v, 0);
-            if (total <= 0) return 0;
-            const probs = energy.map((e) => e / total);
-            const entropy = -probs.reduce(
-              (sum, p) => sum + (p > 0 ? p * Math.log2(p) : 0),
-              0,
-            );
-            const normEntropy = entropy / Math.log2(Math.max(2, probs.length));
-            return Math.max(0, Math.min(1, 1 - normEntropy));
-          } catch (err) {
-            console.warn('QWave measure failed, falling back to wavelet coherence', err);
-            return this.waveletCoherence(samples);
-          }
-        };
         this.qwaveAdapter = {
           measureSpectrum: (s) =>
             measureWaveletEntropy(Float64Array.from(s), opts?.waveletName, opts?.waveletLevel),

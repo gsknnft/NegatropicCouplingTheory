@@ -12,11 +12,18 @@ import { PolicyConsole } from './components/PolicyConsole';
 import { SimulationDiagnostics } from './components/SimulationDiagnostics';
 import { SignalScopePanel } from './components/SignalScopePanel';
 import { WaveletScalogram } from './components/WaveletScalogram';
+import { TransportDiagnostics } from './components/TransportDiagnostics';
+// import { textToBigint } from '@gsknnft/bigint-buffer';
 import './styles/theme.css';
 import { ClassicalVsNegentropic } from './components/ClassicalVsNegentropic';
 import { SimulationStateSchema } from '../shared/schemas';
 import { ScenarioDiagnostics } from './components/ScenarioDiagnostics';
 import { fromFixedPoint } from '../shared/fixedPoint';
+import { QuantumPanels } from './components/QuantumPanels';
+import { QuantumPanel } from './components/QuantumPanel';
+import { SignalScope } from './components/SignalScope';
+import { FieldMetricsPanel } from './components/field/FieldMetricsPanel';
+import type { SignalFrame } from 'shared';
 
 type EdgeMetricPayload =
   | Map<string, EdgeMetrics>
@@ -67,7 +74,37 @@ const formatZodIssues = (error: ZodError): string => {
 
 type StatusLevel = 'info' | 'success' | 'error';
 
+const getSignalData = (state: SimulationState) => {
+  let coherence: number = 0;
+  let entropy: number = 0;
+  let phase: number = 0;
+  let dominantHz: number = 0;
+  const harmonics: number[] = [];
+  const magnitude: number[] = [];
+
+  // Extract relevant data from the state
+  state.history.forEach(signal => {
+    coherence += Number(signal.coherence);
+    entropy += Number(signal.entropy);
+    phase += fromFixedPoint(signal.phase);
+    dominantHz += fromFixedPoint(signal.dominantHz);
+    harmonics.push(signal.harmonics?.map(v => fromFixedPoint(v.valueOf()))?.reduce((a, b) => a + b, 0) ?? 0);
+    magnitude.push(signal.magnitude?.map(row => row.map(v => fromFixedPoint(v.valueOf())).reduce((a, b) => a + b, 0)).reduce((a, b) => a + b, 0) ?? 0);
+  });
+
+  return { coherence, entropy, phase, dominantHz, harmonics, magnitude };
+};
+
+
 export const App: React.FC = () => {
+    // const dataPoints = 50;
+    // const data = [];
+    // const coherence = [];
+    // const entropy = [];
+    // const fieldState = [];
+    // const anomalies = [];
+  const [signal, setSignal] = useState<SignalFrame | null>(null);
+
   const [state, setState] = useState<SimulationState | null>(null);
   const [scenarioMeta, setScenarioMeta] =
     useState<SimulationState['scenarioMetadata'] | null>(null);
@@ -80,6 +117,8 @@ export const App: React.FC = () => {
   const [entropyMode, setEntropyMode] = useState<'builtin_fft' | 'wavelet' | 'psqs' | 'qwave'>('builtin_fft');
   const [waveletName, setWaveletName] = useState<string>('haar');
   const [waveletLevel, setWaveletLevel] = useState<number>(3);
+  const [benchScenarios, setBenchScenarios] = useState<any[]>([]);
+  const [benchRunning, setBenchRunning] = useState(false);
   const [availableScenarios, setAvailableScenarios] = useState([
     { label: 'Entropy Mesh Example', value: '../examples/entropy_mesh_example.json' },
     { label: 'NCF Python Model', value: '../models/NCF_simulation.py' },
@@ -136,9 +175,9 @@ export const App: React.FC = () => {
   const [autoDemo, setAutoDemo] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   // const [mode, setMode] = useState<'demo' | 'real'>('demo');
-  // const [quantumMode, setQuantumMode] = useState(true);
+  const [quantumMode, setQuantumMode] = useState(true);
   // const [viewMode, setViewMode] = useState<'swap' | 'comparison' | 'diagnostics'>('swap');
-  // const [quantumStatus, setQuantumStatus] = useState<{ initialized: boolean }>({ initialized: false });
+  const [quantumStatus, setQuantumStatus] = useState<{ initialized: boolean }>({ initialized: false });
   // const [comparisonData, setComparisonData] = useState({
   //   data: [] as any[],
   //   signalData: {
@@ -149,14 +188,6 @@ export const App: React.FC = () => {
   //   anomalies: [] as any[],
   // });
 
-  // Check quantum adapter status on mount
-  // useEffect(() => {
-  //   if (window.quantum) {
-  //     window.quantum.getStatus().then(status => {
-  //       setQuantumStatus(status);
-  //     });
-  //   }
-  // }, []);
   // Initialize simulation on mount
   useEffect(() => {
     initializeSimulation();
@@ -164,10 +195,11 @@ export const App: React.FC = () => {
 
   // Auto-demo mode
   useEffect(() => {
+    if (!autoDemo) return;
     if (autoDemo && !intervalId) {
       const id = setInterval(() => {
         stepSimulation();
-      }, 100);
+      }, 200);
       setIntervalId(id);
     } else if (!autoDemo && intervalId) {
       clearInterval(intervalId);
@@ -181,6 +213,40 @@ export const App: React.FC = () => {
     };
   }, [autoDemo, intervalId]);
 
+  // Check quantum adapter status on mount
+  useEffect(() => {
+    if (window.quantum) {
+      window.quantum.getStatus().then(status => {
+        setQuantumStatus(status);
+        setQuantumMode(status.mode === 'quantum');
+      });
+    }
+  }, []);
+
+  const runTransportBench = async () => {
+    if (!window.transportBench?.runBench) {
+      setErrorMessage('Transport bench not available in preload');
+      return;
+    }
+    setBenchRunning(true);
+    setErrorMessage(null);
+    try {
+      const result = await window.transportBench.runBench('all');
+      if (result?.summary?.scenarios) {
+        setBenchScenarios(result.summary.scenarios);
+        updateStatus('Bench completed', 'success');
+      } else {
+        updateStatus('Bench returned no scenarios', 'error');
+      }
+    } catch (err) {
+      console.error('Bench failed', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Bench failed');
+      updateStatus('Bench failed', 'error');
+    } finally {
+      setBenchRunning(false);
+    }
+  };
+
   const applySimulationState = (nextState: SimulationStatePayload) => {
     const parsed = SimulationStateSchema.safeParse(nextState);
     if (!parsed.success) {
@@ -190,6 +256,7 @@ export const App: React.FC = () => {
     }
     const normalized = normalizeState(parsed.data);
     setState(normalized);
+    setSignal(getSignalData(normalized));
     setScenarioMeta(normalized.scenarioMetadata ?? null);
     setErrorMessage(null);
     updateStatus('Simulation ready', 'success');
@@ -503,6 +570,37 @@ export const App: React.FC = () => {
               levels={waveletLevel}
             />
           )}
+        </div>
+
+          {quantumStatus && signal ? (
+          <div className="panel panel-large">
+            <QuantumPanels showAnimations={quantumMode} />
+              <QuantumPanel />
+              {quantumMode && (
+                <SignalScope
+                  data={signal}
+                  showPhase={true}
+                  showHarmonics={true}
+                />
+              )}
+                    <div className="panel-group">
+        <FieldMetricsPanel deviceMetrics={{
+          timestamp: Date.now(),
+          negentropicIndex: fromFixedPoint(state?.meshMetrics?.negentropy),
+          coherence: fromFixedPoint(state?.meshMetrics?.coherence),
+          entropy: fromFixedPoint(state?.meshMetrics?.entropy),
+        }} />
+        </div>
+        </div>         
+       ) : null}
+
+        <div className="panel panel-large">
+          <h2>Transport Diagnostics</h2>
+          <TransportDiagnostics
+            scenarios={benchScenarios}
+            onRunBench={runTransportBench}
+            running={benchRunning}
+          />
         </div>
       </div>
       <div className="panel panel-large">

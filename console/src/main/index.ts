@@ -10,6 +10,7 @@ import {
   REACT_DEVELOPER_TOOLS,
 } from 'electron-devtools-installer';
 import { ncfService, NCFParams, NCFResponse } from './components/services/ncfService';
+import { runQWormholeBench } from './services/transportBench';
 import fs from 'node:fs';
 
 // In-memory scenario store
@@ -38,6 +39,15 @@ ipcMain.handle(
     }
   },
 );
+
+ipcMain.handle('transport-bench:run', async (_event, mode: string) => {
+  try {
+    const summary = await runQWormholeBench(mode);
+    return { success: true, summary };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+});
 
 let mainWindow: BrowserWindow | null = null;
 
