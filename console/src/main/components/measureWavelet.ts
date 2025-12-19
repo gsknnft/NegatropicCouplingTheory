@@ -1,9 +1,9 @@
-import { Wavelet, wt } from '@sigilnet/qwave';
+import { wavedec, waverec, Wasmlet, init } from '@sigilnet/qwave';
 import { applyHannWindow } from './services/windows';
 
 interface WaveletMeasureOptions {
   waveletLevel?: number;
-  waveletName?: Wavelet;
+  waveletName?: Wasmlet;
 }
 
 // Returns coherence proxy (1 - normalized entropy over wavelet energy distribution)
@@ -12,12 +12,13 @@ export async function waveletMeasure(
   opts?: WaveletMeasureOptions,
 ): Promise<number> {
   try {
+    await init();
     const level =
       opts?.waveletLevel ??
       Math.max(1, Math.floor(Math.log2(samples.length)) - 2);
     const windowed =
       (applyHannWindow(samples, false) as Float64Array) ?? samples;
-    const coeffs = wt.wavedec(Array.from(windowed), opts?.waveletName ?? 'haar', 'symmetric', level);
+    const coeffs = wavedec(windowed, opts?.waveletName ?? 'haar', 'sym', level);
     const flat: number[] = [];
     if (coeffs && Array.isArray(coeffs)) {
       coeffs.forEach((c: any) => {

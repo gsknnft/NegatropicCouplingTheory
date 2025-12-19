@@ -1,6 +1,3 @@
-
-
-
 function getSeverityColor(severity: 'low' | 'medium' | 'high'): string {
   switch (severity) {
     case 'high': return '#ff0000';

@@ -573,7 +573,7 @@ export const App: React.FC = () => {
         </div>
 
           {quantumStatus && signal ? (
-          <div className="panel panel-large">
+          <div className="panel-group">
             <QuantumPanels showAnimations={quantumMode} />
               <QuantumPanel />
               {quantumMode && (
@@ -583,14 +583,12 @@ export const App: React.FC = () => {
                   showHarmonics={true}
                 />
               )}
-                    <div className="panel-group">
-        <FieldMetricsPanel deviceMetrics={{
-          timestamp: Date.now(),
-          negentropicIndex: fromFixedPoint(state?.meshMetrics?.negentropy),
-          coherence: fromFixedPoint(state?.meshMetrics?.coherence),
-          entropy: fromFixedPoint(state?.meshMetrics?.entropy),
-        }} />
-        </div>
+            <FieldMetricsPanel deviceMetrics={{
+              timestamp: Date.now(),
+              negentropicIndex: fromFixedPoint(state?.meshMetrics?.negentropy),
+              coherence: fromFixedPoint(state?.meshMetrics?.coherence),
+              entropy: fromFixedPoint(state?.meshMetrics?.entropy),
+            }} />
         </div>         
        ) : null}
 

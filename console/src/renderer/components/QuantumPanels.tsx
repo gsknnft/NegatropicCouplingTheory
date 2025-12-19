@@ -688,12 +688,12 @@ export const QuantumPanels: React.FC<QuantumPanelsProps> = ({ signal, showAnimat
             </div>
           ))}
         </div>
-        <div className="flex justify-between mt-1 text-xs text-gray-600">
+        {/* <div className="flex justify-between mt-1 text-xs text-gray-600">
           <span>H1</span>
           <span>H2</span>
           <span>H3</span>
           <span>H4</span>
-        </div>
+        </div> */}
       </div>
 
       {/* Status Indicator with Statistics */}

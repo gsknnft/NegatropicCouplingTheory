@@ -1,24 +1,22 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {
-  NCFSimulation,
-  ScenarioMetadata,
-  SimulationScenario,
-  SimulationState,
-  SimulationMetrics,
-  Edge,
-} from '../components/simulation';
-import {
-  getUploadedScenario,
-  getUploadedScenarioMetadata,
-} from '../components/uploadStore';
 import { execSync } from 'node:child_process';
+import { measureWaveletEntropy, coherenceFromWavelet } from '../components/services/entropy/adapter';
+import { ScenarioMetadata, SimulationScenario, NCFSimulation, Edge, SimulationState, SimulationMetrics } from '../components/simulation';
+import { getUploadedScenarioMetadata, getUploadedScenario } from '../components/uploadStore';
+import { Entropy } from '../components/services/entropy';
+import { FFT, FFTProcessor } from '@sigilnet/fft-ts';
+import { waveletMeasure } from '../components/measureWavelet';
 
 export interface NCFParams {
   steps?: number;
   nodes?: number;
   edges?: number;
   scenarioPath?: string;
+  chaosIntensity?: number;
+  entropyAdapterMode?: 'builtin_fft' | 'wavelet' | 'psqs' | 'qwave' | 'core_fft';
+  waveletName?: string;
+  waveletLevel?: number;
 }
 
 export interface NCFResponse<T = unknown> {
@@ -65,9 +63,111 @@ export class NCFService {
   private simulation: NCFSimulation;
   private scenarioCache: Map<string, SimulationScenario> = new Map();
   private initialized = false;
+  private waveletAdapter?: { measureSpectrum: (samples: Float64Array) => number };
+  private fftAdapter?: { measureSpectrum: (samples: Float64Array) => number };
+  private coreAdapter?: { measureSpectrum: (samples: Float64Array) => number };
+  private qwaveAdapter?: {
+    measureSpectrum: (samples: Float64Array) => number;
+    coherenceFromResonator?: (
+      samples: Float64Array,
+    ) => { coherence: number; regime: 'chaos' | 'transitional' | 'coherent'; entropyVelocity: number };
+  };
 
   constructor() {
     this.simulation = new NCFSimulation();
+  }
+
+  private waveletCoherence(samples: Float64Array): number {
+    if (samples.length < 2) return 0;
+    const n = samples.length - (samples.length % 2);
+    if (n < 2) return 0;
+    const approx: number[] = [];
+    const detail: number[] = [];
+    for (let i = 0; i < n; i += 2) {
+      const a = (samples[i] + samples[i + 1]) / Math.SQRT2;
+      const d = (samples[i] - samples[i + 1]) / Math.SQRT2;
+      approx.push(a);
+      detail.push(d);
+    }
+    const energy = [...approx, ...detail].map((v) => v * v);
+    const total = energy.reduce((acc, v) => acc + v, 0);
+    if (total <= 0) return 0;
+    const probs = energy.map((e) => e / total);
+    const entropy = -probs.reduce(
+      (sum, p) => sum + (p > 0 ? p * Math.log2(p) : 0),
+      0,
+    );
+    const normEntropy = entropy / Math.log2(probs.length);
+    return Math.max(0, Math.min(1, 1 - normEntropy));
+  }
+
+  private async getFFTAdapter(): Promise<{ measureSpectrum: (samples: Float64Array) => number }> {
+      this.fftAdapter = {
+        measureSpectrum: (samples: Float64Array) => {
+          const fft = new FFTProcessor(samples);
+          const spectrum = fft.realTransform(samples);
+          return Entropy.measureSpectrumWithWindow(spectrum);
+        },
+      };
+      return this.fftAdapter;
+  }
+
+  private async getEntropyAdapter(
+    mode?: NCFParams['entropyAdapterMode'],
+    opts?: { waveletName?: string; waveletLevel?: number },
+  ): Promise<
+    | {
+        measureSpectrum: (samples: Float64Array) => number;
+        coherenceFromResonator?: (
+          samples: Float64Array,
+        ) => { coherence: number; regime: 'chaos' | 'transitional' | 'coherent'; entropyVelocity: number };
+      }
+    | undefined
+  > {
+    if (mode === 'wavelet') {
+      if (this.waveletAdapter) return this.waveletAdapter;
+      this.waveletAdapter = {
+        measureSpectrum: (samples: Float64Array) => this.waveletCoherence(samples),
+      };
+      return this.waveletAdapter;
+    }
+    if (mode === 'builtin_fft') {
+      return this.getFFTAdapter();
+    }
+    //     if (mode === 'core_fft') {
+    //   // Prefer wavelet-based entropy/coherence
+    //     this.coreAdapter = {
+    //     measureSpectrum: (samples: Float64Array) => {
+    //       return waveletMeasure(samples);
+    //     },
+    //     }
+    //   return this.coreAdapter;
+    // }
+    if (mode === 'psqs') {
+      // Prefer wavelet-based entropy/coherence
+      return {
+        measureSpectrum: (samples: Float64Array) =>
+          measureWaveletEntropy(samples, opts?.waveletName, opts?.waveletLevel),
+        coherenceFromResonator: (samples: Float64Array) =>
+          coherenceFromWavelet(samples, opts?.waveletName, opts?.waveletLevel),
+      };
+    }
+    if (mode === 'qwave') {
+      if (this.qwaveAdapter) return this.qwaveAdapter;
+      try {
+        this.qwaveAdapter = {
+          measureSpectrum: (s) =>
+            measureWaveletEntropy(Float64Array.from(s), opts?.waveletName, opts?.waveletLevel),
+          coherenceFromResonator: (s) =>
+            coherenceFromWavelet(Float64Array.from(s), opts?.waveletName, opts?.waveletLevel),
+        };
+        return this.qwaveAdapter;
+      } catch (err) {
+        console.warn('QWave adapter unavailable; falling back to FFT', err);
+        return this.getFFTAdapter();
+      }
+    }
+    return undefined;
   }
 
   private normalizeEdgeKey(rawKey: string): string {
@@ -252,10 +352,16 @@ export class NCFService {
 
   public async run(params: NCFParams = {}): Promise<SimulationState> {
     const scenario = await this.getScenario(params.scenarioPath);
+    const entropyAdapter = await this.getEntropyAdapter(params.entropyAdapterMode, {
+      waveletName: params.waveletName,
+      waveletLevel: params.waveletLevel,
+    });
     this.simulation.reset({
       nodes: params.nodes ?? scenario.nodes,
       edges: params.edges ?? scenario.edges.length,
       scenario,
+      chaosIntensity: params.chaosIntensity,
+      entropyAdapter,
     });
     const steps = Math.max(1, params.steps ?? 1);
     for (let i = 0; i < steps; i++) {
@@ -277,10 +383,16 @@ export class NCFService {
 
   public async reset(params: NCFParams = {}): Promise<SimulationState> {
     const scenario = await this.getScenario(params.scenarioPath);
+    const entropyAdapter = await this.getEntropyAdapter(params.entropyAdapterMode, {
+      waveletName: params.waveletName,
+      waveletLevel: params.waveletLevel,
+    });
     this.simulation.reset({
       nodes: params.nodes ?? scenario.nodes,
       edges: params.edges ?? scenario.edges.length,
       scenario,
+      chaosIntensity: params.chaosIntensity,
+      entropyAdapter,
     });
     const primeSteps = Math.max(1, params.steps ?? 1);
     for (let i = 0; i < primeSteps; i++) {

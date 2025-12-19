@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { QWormholeBenchSummary } from '../components/services/transportBench';
+import { QWormholeBenchSummary } from '../services/transportBench';
 
 contextBridge.exposeInMainWorld('transportBench', {
   runBench: async (mode: string = 'all'): Promise<QWormholeBenchSummary> => {
