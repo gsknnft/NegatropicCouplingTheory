@@ -1,42 +1,51 @@
-import type {
-  CoherenceConfig,
-  CoherenceLoopDeps,
-  CoherenceState,
-  CoherenceTelemetryEntry,
-  CouplingParams,
-  FieldSample,
-} from "./types";
-import { clamp01, computeHorizonSec, isUnsafe } from "./invariants";
+export type Margin = number;   // [0,1]
+export type Drift = number;    // dM/dt (units per second)
+export type Reserve = number;  // [0,1]
+
+export interface Sample {
+  t: number;
+  latencyP50: number;
+  latencyP95: number;
+  latencyP99: number;
+  errRate: number;
+  queueDepth: number;
+  queueSlope: number;
+  corrSpike?: number;
+}
+
+export interface CouplingParams {
+  batchSize: number;
+  concurrency: number;
+  redundancy: number;
+  paceMs: number;
+}
+
+export interface CoherenceState {
+  M: Margin;
+  V: Drift;
+  R: Reserve;
+  H: number;
+}
+
+export interface CoherenceConfig {
+  Hmin: number;
+  maxDelta: Partial<CouplingParams>;
+  floors: Partial<CouplingParams>;
+  ceilings: Partial<CouplingParams>;
+}
 
 export class CoherenceLoop {
-  private history: FieldSample[] = [];
-  private readonly deps: CoherenceLoopDeps;
+  private history: Sample[] = [];
+  constructor(private cfg: CoherenceConfig, private historySize = 64) {}
 
-  constructor(
-    private cfg: CoherenceConfig,
-    private historySize = 64,
-    deps?: CoherenceLoopDeps,
-  ) {
-    this.deps = deps ?? {};
-  }
-
-  sample(): FieldSample | null {
-    if (!this.deps.sampler) return null;
-    const sample = this.deps.sampler();
-    if (sample) this.sense(sample);
-    return sample;
-  }
-
-  sense(sample: FieldSample): void {
+  sense(sample: Sample) {
     this.history.push(sample);
     if (this.history.length > this.historySize) this.history.shift();
   }
 
   estimate(): CoherenceState {
     const n = this.history.length;
-    if (n < 2) {
-      return { M: 1, V: 0, R: 1, H: Infinity, confidence: 0 };
-    }
+    if (n < 2) return { M: 1, V: 0, R: 1, H: Infinity };
 
     const a = this.history[n - 2];
     const b = this.history[n - 1];
@@ -53,19 +62,15 @@ export class CoherenceLoop {
     const heat = Math.max(0, b.queueSlope) + (b.corrSpike ?? 0);
     const R = clamp01(1 / (1 + 2 * heat));
 
-    const H = computeHorizonSec(M, V, R);
+    const H = V < 0 ? (M / Math.max(1e-6, Math.abs(V))) * Math.max(0.2, R) : Infinity;
 
-    return { M, V, R, H, confidence: 1 };
-  }
-
-  predictHorizon(state: Pick<CoherenceState, "M" | "V" | "R">): number {
-    return computeHorizonSec(state.M, state.V, state.R);
+    return { M, V, R, H };
   }
 
   adapt(state: CoherenceState, c: CouplingParams): CouplingParams {
     let next = { ...c };
 
-    if (isUnsafe(state, this.cfg.Hmin)) {
+    if (state.H < this.cfg.Hmin) {
       next.batchSize = Math.max(1, Math.floor(next.batchSize / 2));
       next.concurrency = Math.max(1, Math.floor(next.concurrency / 2));
       next.redundancy = next.redundancy + 0.1;
@@ -76,31 +81,10 @@ export class CoherenceLoop {
     next = bound(next, this.cfg.floors, this.cfg.ceilings);
     return next;
   }
+}
 
-  emit(state: CoherenceState, coupling: CouplingParams, sample?: FieldSample): void {
-    if (!this.deps.emit) return;
-    const entry: CoherenceTelemetryEntry = {
-      t: sample?.t ?? Date.now(),
-      state,
-      coupling,
-      sample,
-    };
-    this.deps.emit(entry);
-  }
-
-  step(
-    current: CouplingParams,
-    sample?: FieldSample,
-  ): { state: CoherenceState; next: CouplingParams; sample?: FieldSample } {
-    const usedSample = sample ?? this.sample() ?? this.history.at(-1);
-    if (sample) this.sense(sample);
-    const state = this.estimate();
-    const next = this.adapt(state, current);
-    if (usedSample) {
-      this.emit(state, next, usedSample);
-    }
-    return { state, next, sample: usedSample };
-  }
+function clamp01(x: number) {
+  return Math.max(0, Math.min(1, x));
 }
 
 function damp(
