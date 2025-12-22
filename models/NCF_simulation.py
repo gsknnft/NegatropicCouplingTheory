@@ -6,8 +6,83 @@ Version: 1.0
 import sys
 print(sys.path)
 import numpy as np
+from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional
 import json
+
+
+@dataclass
+class CouplingParams:
+    """Coupling parameters that shape how aggressively the mesh drifts."""
+    noise_scale: float = 0.1
+
+
+@dataclass
+class CoherenceState:
+    """Derived coherence metrics for the current step."""
+    margin: float
+    drift: float
+    reserve: float
+    horizon: float
+
+
+@dataclass
+class CoherenceLoopConfig:
+    """Tuning parameters for the coherence loop."""
+    horizon_min: float = 3.0
+    margin_target: float = 0.7
+    drift_stable: float = 0.02
+    couple_down_step: float = 0.02
+    couple_up_step: float = 0.01
+    horizon_cap: float = 1e6
+    min_noise_scale: float = 0.02
+    max_noise_scale: float = 0.3
+
+
+class CoherenceLoop:
+    """Estimate coherence state and adapt coupling parameters."""
+    def __init__(self, config: Optional[CoherenceLoopConfig] = None):
+        self.config = config or CoherenceLoopConfig()
+
+    def estimate_state(
+        self,
+        avg_negentropy: float,
+        avg_coherence: float,
+        avg_velocity: float,
+        prev_margin: Optional[float],
+    ) -> CoherenceState:
+        margin = _clamp(0.5 * avg_negentropy + 0.5 * avg_coherence, 0.0, 1.0)
+        if prev_margin is None:
+            drift = 0.0
+        else:
+            drift = margin - prev_margin
+
+        reserve = _clamp(1.0 / (1.0 + abs(avg_velocity)), 0.0, 1.0)
+
+        if drift < 0:
+            horizon = margin / max(1e-6, abs(drift))
+            horizon *= max(0.2, reserve)
+        else:
+            horizon = self.config.horizon_cap
+
+        horizon = min(horizon, self.config.horizon_cap)
+
+        return CoherenceState(margin=margin, drift=drift, reserve=reserve, horizon=horizon)
+
+    def adapt(self, state: CoherenceState, params: CouplingParams) -> CouplingParams:
+        noise_scale = params.noise_scale
+
+        if state.horizon < self.config.horizon_min:
+            noise_scale -= self.config.couple_down_step
+        elif state.margin > self.config.margin_target and abs(state.drift) < self.config.drift_stable:
+            noise_scale += self.config.couple_up_step
+
+        noise_scale = _clamp(noise_scale, self.config.min_noise_scale, self.config.max_noise_scale)
+        return CouplingParams(noise_scale=noise_scale)
+
+
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))
 
 
 class NCFSimulation:
@@ -32,6 +107,9 @@ class NCFSimulation:
         self.probabilities = {}
         self.history = []
         self.time = 0
+        self.coupling_params = CouplingParams()
+        self.coherence_loop = CoherenceLoop()
+        self._last_margin = None
         
         self._initialize_mesh()
     
@@ -175,11 +253,13 @@ class NCFSimulation:
     
     def update_distributions(self):
         """Update probability distributions (simple diffusion model)."""
+        noise_scale = self.coupling_params.noise_scale
+        base_weight = max(0.0, 1.0 - noise_scale)
         for edge in self.edges:
             # Add small random perturbation and renormalize
             probs = self.probabilities[edge]
-            noise = np.random.uniform(0, 0.1, size=len(probs))
-            new_probs = probs * 0.9 + noise
+            noise = np.random.uniform(0.0, 1.0, size=len(probs)) * noise_scale
+            new_probs = probs * base_weight + noise
             self.probabilities[edge] = new_probs / new_probs.sum()
     
     def evolve(self) -> Dict[str, float]:
@@ -199,14 +279,33 @@ class NCFSimulation:
         avg_negentropy = np.mean(list(negentropies.values()))
         avg_coherence = np.mean(list(coherences.values()))
         avg_velocity = np.mean(list(velocities.values()))
-        
+
+        coherence_state = self.coherence_loop.estimate_state(
+            avg_negentropy=float(avg_negentropy),
+            avg_coherence=float(avg_coherence),
+            avg_velocity=float(avg_velocity),
+            prev_margin=self._last_margin,
+        )
+        self.coupling_params = self.coherence_loop.adapt(
+            state=coherence_state,
+            params=self.coupling_params,
+        )
+        self._last_margin = coherence_state.margin
+
         # Log state
         self.history.append({
             'time': self.time,
             'entropy': entropies.copy(),
             'negentropy': avg_negentropy,
             'coherence': avg_coherence,
-            'velocity': avg_velocity
+            'velocity': avg_velocity,
+            'margin': coherence_state.margin,
+            'drift': coherence_state.drift,
+            'reserve': coherence_state.reserve,
+            'horizon': coherence_state.horizon,
+            'coupling': {
+                'noise_scale': self.coupling_params.noise_scale
+            }
         })
         
         # Update distributions for next step
@@ -216,7 +315,12 @@ class NCFSimulation:
         return {
             'negentropy': float(avg_negentropy),
             'coherence': float(avg_coherence),
-            'velocity': float(avg_velocity)
+            'velocity': float(avg_velocity),
+            'margin': float(coherence_state.margin),
+            'drift': float(coherence_state.drift),
+            'reserve': float(coherence_state.reserve),
+            'horizon': float(coherence_state.horizon),
+            'noise_scale': float(self.coupling_params.noise_scale)
         }
     
     def get_history(self) -> List[Dict]:
